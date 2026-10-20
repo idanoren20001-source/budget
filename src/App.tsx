@@ -12,6 +12,8 @@ import { CloudSettingsModal } from './components/CloudSettingsModal';
 import { ItemDrawer } from './components/ItemDrawer';
 import { AuditTrailTable } from './components/AuditTrailTable';
 import { BackupModal } from './components/BackupModal';
+import { SmartBudgetChat } from './components/SmartBudgetChat';
+import { Sparkles } from 'lucide-react';
 
 import {
   BudgetItem,
@@ -79,6 +81,9 @@ export function App() {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<BudgetItemCalculated | null>(null);
 
+  // Smart Budget Chatbot state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
   // --- Real-time Sync & Multi-PC Heartbeat ---
   useEffect(() => {
     // 0. Initial load from central server (ensures other computers load fresh server state immediately)
@@ -127,6 +132,7 @@ export function App() {
         setIsCloudSettingsOpen(false);
         setIsBackupModalOpen(false);
         setSelectedDrawerItem(null);
+        setIsChatOpen(false);
       }
     };
 
@@ -210,7 +216,7 @@ export function App() {
     [expenses]
   );
 
-  // Delete expense
+  // Delete single expense
   const handleDeleteExpense = useCallback(
     (id: string) => {
       const expToDelete = expenses.find((e) => e.id === id);
@@ -231,6 +237,71 @@ export function App() {
     },
     [expenses]
   );
+
+  // Bulk Delete Expenses
+  const handleBulkDeleteExpenses = useCallback(
+    (ids: string[]) => {
+      const toDelete = expenses.filter((e) => ids.includes(e.id));
+      const totalDeletedSum = toDelete.reduce((s, e) => s + e.amount, 0);
+      const updated = expenses.filter((e) => !ids.includes(e.id));
+
+      setExpenses(updated);
+      saveExpenses(updated, true);
+
+      logAuditEvent(
+        'expense_delete',
+        'מחיקה מרוכזת',
+        `נמחקו ${ids.length} הוצאות בסך כולל של ${formatCurrency(totalDeletedSum)}`
+      );
+      setAuditLogs(getStoredAuditLogs());
+    },
+    [expenses]
+  );
+
+  // Bulk Update Expenses
+  const handleBulkUpdateExpenses = useCallback(
+    (ids: string[], updates: Partial<Expense>) => {
+      const updated = expenses.map((e) =>
+        ids.includes(e.id) ? { ...e, ...updates } : e
+      );
+      setExpenses(updated);
+      saveExpenses(updated, true);
+
+      logAuditEvent(
+        'expense_update',
+        'עריכה מרוכזת',
+        `עודכנו ${ids.length} הוצאות במקביל (שדות שעודכנו: ${Object.keys(updates).join(', ')})`
+      );
+      setAuditLogs(getStoredAuditLogs());
+    },
+    [expenses]
+  );
+
+  // Delete selected audit logs
+  const handleBulkDeleteAuditLogs = useCallback(
+    (ids: string[]) => {
+      const updated = auditLogs.filter((l) => !ids.includes(l.id));
+      setAuditLogs(updated);
+      saveAuditLogs(updated);
+    },
+    [auditLogs]
+  );
+
+  // Clear all audit logs
+  const handleClearAllAuditLogs = useCallback(() => {
+    const freshLog: AuditLog[] = [
+      {
+        id: `audit-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        action_type: 'system_restore',
+        entity_name: 'יומן שינויים',
+        details: 'יומן השינויים אופס על ידי המשתמש',
+        user: 'מנהל מערכת',
+      },
+    ];
+    setAuditLogs(freshLog);
+    saveAuditLogs(freshLog);
+  }, []);
 
   // Update single monthly budget (Inline Edit or Drawer)
   const handleUpdateMonthlyBudget = useCallback(
@@ -338,9 +409,9 @@ export function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-['Assistant',sans-serif]">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-['Assistant',sans-serif] relative">
       
-      {/* Header with Navigation, Tabs, and Quick Actions */}
+      {/* Header with Navigation, Tabs, AI Assistant Button and Quick Actions */}
       <Header
         onOpenNewExpense={() => {
           setPreselectedItemId(null);
@@ -352,6 +423,8 @@ export function App() {
         onExportExpenses={handleExportExpenses}
         onExportBudgetReport={handleExportBudgetReport}
         onPrint={handlePrint}
+        onToggleChat={() => setIsChatOpen(!isChatOpen)}
+        isChatOpen={isChatOpen}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         expensesCount={periodExpenses.length}
@@ -410,13 +483,15 @@ export function App() {
           </>
         )}
 
-        {/* 2. Expenses Log View */}
+        {/* 2. Expenses Log View with Multi-Selection & Bulk Actions */}
         {activeTab === 'expenses' && (
           <ExpensesLogTable
             expenses={periodExpenses}
             budgetItems={budgetItems}
             onDeleteExpense={handleDeleteExpense}
             onUpdateExpense={handleUpdateExpense}
+            onBulkDeleteExpenses={handleBulkDeleteExpenses}
+            onBulkUpdateExpenses={handleBulkUpdateExpenses}
             onOpenNewExpense={() => {
               setPreselectedItemId(null);
               setIsExpenseModalOpen(true);
@@ -425,12 +500,39 @@ export function App() {
           />
         )}
 
-        {/* 3. Audit Trail View (יומן פעולות ושינויים) */}
+        {/* 3. Audit Trail View with Multi-Selection */}
         {activeTab === 'audit' && (
-          <AuditTrailTable logs={auditLogs} />
+          <AuditTrailTable
+            logs={auditLogs}
+            onDeleteLogs={handleBulkDeleteAuditLogs}
+            onClearAllLogs={handleClearAllAuditLogs}
+          />
         )}
 
       </main>
+
+      {/* Floating Action Button for AI Smart Assistant (Bottom Left) */}
+      {!isChatOpen && (
+        <button
+          onClick={() => setIsChatOpen(true)}
+          className="fixed bottom-5 left-5 z-40 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white p-3.5 rounded-full shadow-xl shadow-indigo-500/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer no-print group"
+          title="פתח עוזר תקציבי חכם (AI)"
+        >
+          <Sparkles className="w-5 h-5 text-amber-300 animate-spin [animation-duration:8s]" />
+          <span className="text-xs font-bold pl-1 max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs transition-all duration-300">
+            שאל את העוזר התקציבי
+          </span>
+        </button>
+      )}
+
+      {/* Smart Budget AI Chatbot Drawer/Window */}
+      <SmartBudgetChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        budgetItems={budgetItems}
+        expenses={expenses}
+        currentFilter={filter}
+      />
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200/80 py-4 mt-auto no-print">
@@ -443,7 +545,7 @@ export function App() {
             </span>
           </div>
           <div>
-            7 קבוצות ראשיות • {budgetItems.length} סעיפי FI מוגדרים • יומן שינויים פעיל ({auditLogs.length} רשומות)
+            7 קבוצות ראשיות • {budgetItems.length} סעיפי FI מוגדרים • עוזר תקציבי חכם פעיל
           </div>
         </div>
       </footer>

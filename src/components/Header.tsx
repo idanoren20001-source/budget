@@ -9,6 +9,7 @@ import {
   ChevronDown,
   HardDrive,
   History,
+  Sparkles,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -19,6 +20,8 @@ interface HeaderProps {
   onExportExpenses: () => void;
   onExportBudgetReport: () => void;
   onPrint: () => void;
+  onToggleChat?: () => void;
+  isChatOpen?: boolean;
   activeTab: 'dashboard' | 'expenses' | 'audit';
   setActiveTab: (tab: 'dashboard' | 'expenses' | 'audit') => void;
   expensesCount: number;
@@ -33,6 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   onExportExpenses,
   onExportBudgetReport,
   onPrint,
+  onToggleChat,
+  isChatOpen,
   activeTab,
   setActiveTab,
   expensesCount,
@@ -114,6 +119,25 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Action Buttons */}
           <div className="flex items-center flex-wrap gap-2 no-print">
             
+            {/* AI Smart Assistant Chat Button */}
+            {onToggleChat && (
+              <button
+                onClick={onToggleChat}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer ${
+                  isChatOpen
+                    ? 'bg-indigo-700 text-white shadow-indigo-500/25'
+                    : 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-900 border border-indigo-200/80 hover:bg-indigo-100/60'
+                }`}
+                title="עוזר תקציבי חכם - שאלות ותשובות"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>עוזר חכם</span>
+                <span className="bg-indigo-200/60 text-indigo-950 text-[9px] px-1 py-0.2 rounded font-black">
+                  AI
+                </span>
+              </button>
+            )}
+
             {/* New Expense Button (Prominent) */}
             <button
               onClick={onOpenNewExpense}

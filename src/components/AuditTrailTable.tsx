@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   History,
   Search,
@@ -11,32 +11,90 @@ import {
   SlidersHorizontal,
   Clock,
   User,
+  CheckSquare,
+  Square,
+  AlertTriangle,
 } from 'lucide-react';
 import { AuditLog, AuditActionType } from '../types';
 
 interface AuditTrailTableProps {
   logs: AuditLog[];
+  onDeleteLogs?: (ids: string[]) => void;
+  onClearAllLogs?: () => void;
 }
 
-export const AuditTrailTable: React.FC<AuditTrailTableProps> = ({ logs }) => {
+export const AuditTrailTable: React.FC<AuditTrailTableProps> = ({
+  logs,
+  onDeleteLogs,
+  onClearAllLogs,
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const filteredLogs = logs.filter((log) => {
-    if (actionFilter !== 'all' && log.action_type !== actionFilter) {
-      return false;
+  const filteredLogs = useMemo(() => {
+    return logs.filter((log) => {
+      if (actionFilter !== 'all' && log.action_type !== actionFilter) {
+        return false;
+      }
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        return (
+          log.entity_name.toLowerCase().includes(q) ||
+          (log.fi_code && log.fi_code.toLowerCase().includes(q)) ||
+          log.details.toLowerCase().includes(q) ||
+          (log.user && log.user.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [logs, actionFilter, searchTerm]);
+
+  // Selection
+  const isAllSelected =
+    filteredLogs.length > 0 &&
+    filteredLogs.every((l) => selectedIds.includes(l.id));
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredLogs.map((l) => l.id));
     }
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      return (
-        log.entity_name.toLowerCase().includes(q) ||
-        (log.fi_code && log.fi_code.toLowerCase().includes(q)) ||
-        log.details.toLowerCase().includes(q) ||
-        (log.user && log.user.toLowerCase().includes(q))
-      );
+  };
+
+  const handleToggleSelectOne = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) return;
+    if (
+      confirm(
+        `האם למחוק ${selectedIds.length} רשומות מיומן הפעולות? פעולה זו תוסר מההיסטוריה.`
+      )
+    ) {
+      if (onDeleteLogs) {
+        onDeleteLogs(selectedIds);
+      }
+      setSelectedIds([]);
     }
-    return true;
-  });
+  };
+
+  const handleClearAll = () => {
+    if (
+      confirm(
+        'האם אתה בטוח שברצונך לאפס ולמחוק את כל יומן הפעולות והשינויים? (לא מומלץ למחוק היסטוריה ארגונית)'
+      )
+    ) {
+      if (onClearAllLogs) {
+        onClearAllLogs();
+      }
+      setSelectedIds([]);
+    }
+  };
 
   const getActionBadge = (type: AuditActionType) => {
     switch (type) {
@@ -100,13 +158,13 @@ export const AuditTrailTable: React.FC<AuditTrailTableProps> = ({ logs }) => {
                 יומן פעולות ושינויים (Audit Trail & Change History)
               </h3>
               <p className="text-xs text-slate-500">
-                תיעוד אוטומטי של כל עדכון תקציב, רישום הוצאה או שינוי במערכת
+                תיעוד אוטומטי של כל עדכון תקציב, רישום הוצאה או שינוי במערכת ({logs.length} רשומות)
               </p>
             </div>
           </div>
         </div>
 
-        {/* Filter and Search */}
+        {/* Filter, Search & Clear */}
         <div className="flex flex-col sm:flex-row items-center gap-2.5">
           <div className="relative w-full sm:w-60">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" />
@@ -131,14 +189,60 @@ export const AuditTrailTable: React.FC<AuditTrailTableProps> = ({ logs }) => {
             <option value="expense_delete">מחיקות</option>
             <option value="system_restore">שחזור מערכת</option>
           </select>
+
+          {logs.length > 0 && onClearAllLogs && (
+            <button
+              onClick={handleClearAll}
+              className="text-xs text-slate-400 hover:text-rose-600 px-2 py-1 transition-colors whitespace-nowrap cursor-pointer"
+              title="נקה יומן שלם"
+            >
+              נקה הכל
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Bulk Toolbar for Audit Logs */}
+      {selectedIds.length > 0 && (
+        <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between text-xs animate-in fade-in duration-150">
+          <div className="flex items-center gap-2">
+            <span className="bg-slate-700 px-2 py-0.5 rounded font-bold">
+              {selectedIds.length} רשומות נבחרו
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDeleteSelected}
+              className="inline-flex items-center gap-1 bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 rounded-lg font-bold transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>מחק רשומות נבחרות</span>
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="text-slate-400 hover:text-white px-2 py-1"
+            >
+              בטל בחירה
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-right text-xs">
           <thead>
             <tr className="bg-slate-100/75 border-b border-slate-200 text-slate-600 font-bold">
+              <th className="py-3 px-3 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={handleToggleSelectAll}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  title="בחר / בטל הכל"
+                />
+              </th>
               <th className="py-3 px-3.5 w-40">מועד הפעולה</th>
               <th className="py-3 px-3.5 w-32">סוג פעולה</th>
               <th className="py-3 px-3.5 w-24">קוד FI</th>
@@ -150,43 +254,59 @@ export const AuditTrailTable: React.FC<AuditTrailTableProps> = ({ logs }) => {
           <tbody className="divide-y divide-slate-100">
             {filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-slate-400">
+                <td colSpan={7} className="py-10 text-center text-slate-400">
                   לא נמצאו רשומות ביומן הפעולות התואמות את החיפוש.
                 </td>
               </tr>
             ) : (
-              filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
-                  <td className="py-2.5 px-3.5 font-mono text-slate-500 whitespace-nowrap">
-                    {new Date(log.timestamp).toLocaleString('he-IL', {
-                      dateStyle: 'short',
-                      timeStyle: 'medium',
-                    })}
-                  </td>
-                  <td className="py-2.5 px-3.5 whitespace-nowrap">
-                    {getActionBadge(log.action_type)}
-                  </td>
-                  <td className="py-2.5 px-3.5 font-mono font-bold text-slate-800 whitespace-nowrap">
-                    {log.fi_code ? (
-                      <span className="bg-slate-100 px-1.5 py-0.5 rounded">
-                        {log.fi_code}
-                      </span>
-                    ) : (
-                      '—'
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3.5 font-bold text-slate-900 whitespace-nowrap">
-                    {log.entity_name}
-                  </td>
-                  <td className="py-2.5 px-3.5 text-slate-700 leading-relaxed">
-                    {log.details}
-                  </td>
-                  <td className="py-2.5 px-3.5 text-slate-500 whitespace-nowrap flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{log.user || 'משתמש'}</span>
-                  </td>
-                </tr>
-              ))
+              filteredLogs.map((log) => {
+                const isSelected = selectedIds.includes(log.id);
+                return (
+                  <tr
+                    key={log.id}
+                    className={`transition-colors ${
+                      isSelected ? 'bg-indigo-50/70' : 'hover:bg-slate-50/70'
+                    }`}
+                  >
+                    <td className="py-2.5 px-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelectOne(log.id)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </td>
+                    <td className="py-2.5 px-3.5 font-mono text-slate-500 whitespace-nowrap">
+                      {new Date(log.timestamp).toLocaleString('he-IL', {
+                        dateStyle: 'short',
+                        timeStyle: 'medium',
+                      })}
+                    </td>
+                    <td className="py-2.5 px-3.5 whitespace-nowrap">
+                      {getActionBadge(log.action_type)}
+                    </td>
+                    <td className="py-2.5 px-3.5 font-mono font-bold text-slate-800 whitespace-nowrap">
+                      {log.fi_code ? (
+                        <span className="bg-slate-100 px-1.5 py-0.5 rounded">
+                          {log.fi_code}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3.5 font-bold text-slate-900 whitespace-nowrap">
+                      {log.entity_name}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-slate-700 leading-relaxed">
+                      {log.details}
+                    </td>
+                    <td className="py-2.5 px-3.5 text-slate-500 whitespace-nowrap flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-slate-400" />
+                      <span>{log.user || 'משתמש'}</span>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
