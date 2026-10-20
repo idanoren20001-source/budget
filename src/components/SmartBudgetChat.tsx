@@ -6,22 +6,26 @@ import {
   Bot,
   User,
   RotateCcw,
-  HelpCircle,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  ExternalLink,
-  ChevronDown,
-  Layers,
-  Calendar,
-  PieChart,
-  Building2,
-  Briefcase,
-  AlertTriangle,
-  History,
   Search,
   BookOpen,
   ArrowRight,
+  Filter,
+  CheckCircle,
+  Wrench,
+  Car,
+  Calendar,
+  PieChart,
+  TrendingUp,
+  Utensils,
+  Monitor,
+  Building,
+  Briefcase,
+  AlertTriangle,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { BudgetItem, Expense, PeriodFilter } from '../types';
 import {
@@ -52,41 +56,50 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
     {
       id: 'welcome',
       sender: 'assistant',
-      text: 'שלום! אני העוזר התקציבי החכם שלך. 🤖\nלרשותך מאגר שאלות עשיר ומחולק לפי קטגוריות: **חודשים, רבעונים, שנתי, קבוצות, ספקים וחריגות**.\n\nתוכל לבחור שאלה מוכנה בלחיצה אחת או להקליד כל שאלה בשפה חופשית!',
+      text: 'שלום! אני העוזר התקציבי החכם שלך. 🤖\nבסרגל הימני תמצא **מאגר שאלות וסינונים** לפי נושאים.\n\nנסה להקליד בחיפוש **"תפעול"**, **"רכבים"**, **"רבעון"** או **"חריגה"** כדי לראות מיד את כל השאלות הרלוונטיות וללחוץ עליהן!',
       timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
-  // Question Catalog State
-  const [showCatalog, setShowCatalog] = useState(false);
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<QuestionCategoryType>('all');
-  const [catalogSearch, setCatalogSearch] = useState('');
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(true);
+  const [lastClickedQuestionId, setLastClickedQuestionId] = useState<string | null>(null);
+
+  // Mobile active tab ('questions' | 'chat')
+  const [mobileTab, setMobileTab] = useState<'questions' | 'chat'>('questions');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto scroll
-  useEffect(() => {
-    if (isOpen && !showCatalog) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, isOpen, showCatalog]);
-
-  // Focus input on open
+  // Auto scroll chat
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 150);
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOpen]);
+
+  // Focus search input when opening
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 200);
     }
   }, [isOpen]);
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = (textToSend?: string, questionId?: string) => {
     const text = (textToSend || inputValue).trim();
     if (!text) return;
 
-    // Close catalog when sending
-    setShowCatalog(false);
+    if (questionId) {
+      setLastClickedQuestionId(questionId);
+    }
+
+    // On mobile switch to chat tab
+    setMobileTab('chat');
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -99,7 +112,6 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate smart fast reasoning
     setTimeout(() => {
       const response = answerBudgetQuestion(text, budgetItems, expenses, currentFilter);
       const assistantMsg: ChatMessage = {
@@ -117,54 +129,77 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
       {
         id: 'welcome-reset',
         sender: 'assistant',
-        text: 'השיחה אופסה. תוכל לבחור שאלה מתוך המאגר או להקליד שאלה חדשה.',
+        text: 'השיחה אופסה. בחר שאלה מהסרגל הימני או הקלד שאלה חופשית.',
         timestamp: new Date().toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
+    setLastClickedQuestionId(null);
   };
 
-  // Filter questions for catalog
-  const filteredCatalogQuestions = useMemo(() => {
-    return CATEGORIZED_QUESTIONS.filter((q) => {
-      if (selectedCategory !== 'all' && q.category !== selectedCategory) {
+  // Filtered Questions using both category and keyword search
+  const filteredQuestions = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return CATEGORIZED_QUESTIONS.filter((item) => {
+      // 1. Category filter
+      if (selectedCategory !== 'all' && item.category !== selectedCategory) {
         return false;
       }
-      if (catalogSearch.trim()) {
-        const query = catalogSearch.toLowerCase();
-        return (
-          q.text.toLowerCase().includes(query) ||
-          q.description.toLowerCase().includes(query)
-        );
+      // 2. Keyword/text filter
+      if (q) {
+        const matchesText = item.text.toLowerCase().includes(q);
+        const matchesDesc = item.description.toLowerCase().includes(q);
+        const matchesKeywords = item.keywords.some((k) => k.toLowerCase().includes(q));
+        return matchesText || matchesDesc || matchesKeywords;
       }
       return true;
     });
-  }, [selectedCategory, catalogSearch]);
+  }, [selectedCategory, searchTerm]);
 
   // Category counts
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: CATEGORIZED_QUESTIONS.length };
-    CATEGORIZED_QUESTIONS.forEach((q) => {
-      counts[q.category] = (counts[q.category] || 0) + 1;
+    const q = searchTerm.trim().toLowerCase();
+    const counts: Record<string, number> = { all: 0 };
+
+    CATEGORIZED_QUESTIONS.forEach((item) => {
+      let matchesSearch = true;
+      if (q) {
+        matchesSearch =
+          item.text.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q) ||
+          item.keywords.some((k) => k.toLowerCase().includes(q));
+      }
+
+      if (matchesSearch) {
+        counts.all += 1;
+        counts[item.category] = (counts[item.category] || 0) + 1;
+      }
     });
+
     return counts;
-  }, []);
+  }, [searchTerm]);
 
   const getCategoryIcon = (cat: QuestionCategoryType) => {
     switch (cat) {
+      case 'operations':
+        return <Wrench className="w-3.5 h-3.5" />;
+      case 'vehicles':
+        return <Car className="w-3.5 h-3.5" />;
       case 'months':
         return <Calendar className="w-3.5 h-3.5" />;
       case 'quarters':
         return <PieChart className="w-3.5 h-3.5" />;
       case 'annual':
         return <TrendingUp className="w-3.5 h-3.5" />;
-      case 'groups':
-        return <Building2 className="w-3.5 h-3.5" />;
+      case 'catering':
+        return <Utensils className="w-3.5 h-3.5" />;
+      case 'it':
+        return <Monitor className="w-3.5 h-3.5" />;
+      case 'realestate':
+        return <Building className="w-3.5 h-3.5" />;
       case 'vendors':
         return <Briefcase className="w-3.5 h-3.5" />;
       case 'alerts':
         return <AlertTriangle className="w-3.5 h-3.5" />;
-      case 'audit':
-        return <History className="w-3.5 h-3.5" />;
       default:
         return <Layers className="w-3.5 h-3.5" />;
     }
@@ -173,55 +208,49 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 z-50 w-[470px] max-w-[calc(100vw-2rem)] h-[670px] max-h-[calc(100vh-5rem)] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200 font-['Assistant',sans-serif]">
+    <div className="fixed bottom-4 left-4 z-50 w-[840px] max-w-[calc(100vw-2rem)] h-[690px] max-h-[calc(100vh-4rem)] bg-white rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-200 font-['Assistant',sans-serif]">
       
-      {/* Header */}
-      <div className="bg-gradient-to-l from-indigo-800 via-indigo-700 to-blue-600 text-white px-4 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center border border-white/25">
+      {/* Top Header Banner */}
+      <div className="bg-gradient-to-l from-indigo-900 via-indigo-800 to-blue-700 text-white px-5 py-3 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center border border-white/25 shadow-2xs">
             <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <h3 className="font-bold text-sm leading-none">עוזר תקציבי חכם</h3>
-              <span className="bg-emerald-400 text-slate-900 text-[10px] font-black px-1.5 py-0.2 rounded-full">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-sm leading-none">עוזר תקציבי חכם (AI Financial Assistant)</h3>
+              <span className="bg-emerald-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">
                 AI Live
               </span>
             </div>
             <p className="text-[11px] text-indigo-100/80 mt-0.5">
-              מענה תקציבי מבוסס חודשים, רבעונים, שנתי וספקים
+              חיפוש שאלות מובנות לפי תפעול, רכבים, חודשים, רבעונים וספקים
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 text-white/80">
-          {/* Toggle Catalog vs Chat button */}
+        {/* Header Right Actions */}
+        <div className="flex items-center gap-1.5 text-white/80">
           <button
-            onClick={() => setShowCatalog(!showCatalog)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-              showCatalog
-                ? 'bg-amber-400 text-slate-950 shadow-sm'
-                : 'bg-white/15 hover:bg-white/25 text-white'
-            }`}
-            title="פתח מאגר שאלות מומלצות לפי קטגוריות"
+            onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
+            className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors cursor-pointer text-white"
+            title="הצג / הסתר סרגל שאלות"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>מאגר שאלות</span>
-            <span className="bg-black/20 text-[10px] px-1 rounded-full font-mono">
-              {CATEGORIZED_QUESTIONS.length}
-            </span>
+            <span>{isSidePanelOpen ? 'הסתר מאגר' : 'הצג מאגר'}</span>
           </button>
 
           <button
             onClick={handleResetChat}
-            className="p-1.5 hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-white/15 rounded-xl transition-colors cursor-pointer"
             title="איפוס שיחה"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-4 h-4" />
           </button>
+
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-white/15 rounded-xl transition-colors cursor-pointer"
             title="סגור חלון"
           >
             <X className="w-4 h-4" />
@@ -229,148 +258,194 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
         </div>
       </div>
 
-      {/* VIEW A: Full Categorized Questions Catalog */}
-      {showCatalog ? (
-        <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden animate-in fade-in duration-150">
-          
-          {/* Catalog Search & Category Tabs */}
-          <div className="p-3 bg-white border-b border-slate-200 space-y-2.5">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="חיפוש שאלה במאגר (לדוגמה: רבעון, ספק, אחזקה, חריגה)..."
-                value={catalogSearch}
-                onChange={(e) => setCatalogSearch(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-8 pl-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-              />
-              {catalogSearch && (
-                <button
-                  onClick={() => setCatalogSearch('')}
-                  className="absolute left-2.5 top-2 text-xs text-slate-400 hover:text-slate-600"
-                >
-                  ✕
-                </button>
+      {/* Mobile Tab Switcher (Visible on small screens) */}
+      <div className="flex md:hidden border-b border-slate-200 bg-slate-50 text-xs font-bold">
+        <button
+          onClick={() => setMobileTab('questions')}
+          className={`flex-1 py-2 text-center border-b-2 transition-all ${
+            mobileTab === 'questions'
+              ? 'border-indigo-600 text-indigo-700 bg-white'
+              : 'border-transparent text-slate-500'
+          }`}
+        >
+          🔍 מאגר שאלות וחיפוש ({filteredQuestions.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('chat')}
+          className={`flex-1 py-2 text-center border-b-2 transition-all ${
+            mobileTab === 'chat'
+              ? 'border-indigo-600 text-indigo-700 bg-white'
+              : 'border-transparent text-slate-500'
+          }`}
+        >
+          💬 שיחה ותשובות ({messages.length})
+        </button>
+      </div>
+
+      {/* Dual Panel Body Layout */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* ============================================================== */}
+        {/* PANEL 1: Question Explorer & Instant Search (Right Side)       */}
+        {/* ============================================================== */}
+        {(isSidePanelOpen || mobileTab === 'questions') && (
+          <div
+            className={`w-full md:w-[350px] shrink-0 border-l border-slate-200 bg-slate-50/70 flex flex-col overflow-hidden ${
+              mobileTab === 'questions' ? 'flex' : 'hidden md:flex'
+            }`}
+          >
+            {/* Top Search Bar */}
+            <div className="p-3 bg-white border-b border-slate-200 space-y-2">
+              <div className="relative">
+                <Search className="w-4 h-4 text-indigo-500 absolute right-3 top-2.5" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder='חיפוש שאלה או נושא (למשל: "תפעול", "דלק", "רבעון")...'
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-9 pl-7 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute left-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Category Pills (Horizontal scrollable) */}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                {QUESTION_CATEGORIES.map((cat) => {
+                  const count = categoryCounts[cat.key] || 0;
+                  const isActive = selectedCategory === cat.key;
+                  return (
+                    <button
+                      key={cat.key}
+                      onClick={() => setSelectedCategory(cat.key)}
+                      className={`whitespace-nowrap px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700'
+                      }`}
+                    >
+                      {getCategoryIcon(cat.key)}
+                      <span>{cat.label}</span>
+                      {count > 0 && (
+                        <span
+                          className={`text-[10px] px-1 py-0.2 rounded-full font-mono ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Questions List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div className="text-[11px] font-bold text-slate-400 px-1 flex items-center justify-between">
+                <span>
+                  {searchTerm
+                    ? `תוצאות עבור "${searchTerm}" (${filteredQuestions.length})`
+                    : `שאלות בקטגוריה (${filteredQuestions.length})`}
+                </span>
+                <span className="text-[10px] text-indigo-600 font-semibold">
+                  לחץ לבחירה והרצה
+                </span>
+              </div>
+
+              {filteredQuestions.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs space-y-2">
+                  <p>לא נמצאו שאלות תואמות לחיפוש "{searchTerm}".</p>
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedCategory('all');
+                    }}
+                    className="text-indigo-600 font-bold hover:underline"
+                  >
+                    נקה סינונים והצג הכל
+                  </button>
+                </div>
+              ) : (
+                filteredQuestions.map((q) => {
+                  const isSelected = lastClickedQuestionId === q.id;
+                  return (
+                    <div
+                      key={q.id}
+                      onClick={() => handleSend(q.text, q.id)}
+                      className={`group border rounded-2xl p-2.5 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-2.5 text-right ${
+                        isSelected
+                          ? 'bg-indigo-50/90 border-indigo-400 ring-1 ring-indigo-400/30'
+                          : 'bg-white hover:bg-indigo-50/60 border-slate-200/90 hover:border-indigo-300'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span
+                            className={`p-1 rounded-lg transition-colors ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-slate-100 text-slate-600 group-hover:bg-indigo-600 group-hover:text-white'
+                            }`}
+                          >
+                            {getCategoryIcon(q.category)}
+                          </span>
+                          <h4
+                            className={`text-xs font-bold transition-colors leading-tight truncate ${
+                              isSelected
+                                ? 'text-indigo-900 font-black'
+                                : 'text-slate-900 group-hover:text-indigo-950'
+                            }`}
+                          >
+                            {q.text}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-slate-500 line-clamp-1 pr-5">
+                          {q.description}
+                        </p>
+                      </div>
+
+                      <div
+                        className={`shrink-0 p-1 rounded-lg transition-all ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-100 group-hover:bg-indigo-600 text-slate-400 group-hover:text-white'
+                        }`}
+                      >
+                        <ArrowRight className="w-3 h-3 transform rotate-180" />
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
 
-            {/* Category horizontal pills */}
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
-              {QUESTION_CATEGORIES.map((cat) => {
-                const count = categoryCounts[cat.key] || 0;
-                const isActive = selectedCategory === cat.key;
-                return (
-                  <button
-                    key={cat.key}
-                    onClick={() => setSelectedCategory(cat.key)}
-                    className={`whitespace-nowrap px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-2xs'
-                        : 'bg-slate-100 hover:bg-slate-200/80 text-slate-600'
-                    }`}
-                  >
-                    {getCategoryIcon(cat.key)}
-                    <span>{cat.label}</span>
-                    <span
-                      className={`text-[10px] px-1 py-0.2 rounded-full font-mono ${
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-200 text-slate-500'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+            {/* Bottom Quick Count */}
+            <div className="p-2 bg-white border-t border-slate-200 text-center text-[11px] text-slate-400">
+              מאגר שאלות מובנה ({CATEGORIZED_QUESTIONS.length} שאלות זמינות)
             </div>
           </div>
+        )}
 
-          {/* Catalog Questions List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            <div className="text-[11px] font-bold text-slate-400 px-1 flex items-center justify-between">
-              <span>
-                נמצאו {filteredCatalogQuestions.length} שאלות זמינות
-              </span>
-              <button
-                onClick={() => setShowCatalog(false)}
-                className="text-indigo-600 hover:underline"
-              >
-                חזרה לצ'אט ←
-              </button>
-            </div>
-
-            {filteredCatalogQuestions.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs">
-                לא נמצאו שאלות התואמות לחיפוש שלך.
-              </div>
-            ) : (
-              filteredCatalogQuestions.map((q) => (
-                <div
-                  key={q.id}
-                  onClick={() => handleSend(q.text)}
-                  className="group bg-white hover:bg-indigo-50/70 border border-slate-200/90 hover:border-indigo-300 rounded-2xl p-3 transition-all cursor-pointer shadow-2xs flex items-center justify-between gap-3 text-right"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="p-1 rounded-lg bg-indigo-50 text-indigo-700 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                        {getCategoryIcon(q.category)}
-                      </span>
-                      <h4 className="text-xs font-bold text-slate-900 group-hover:text-indigo-950 transition-colors">
-                        {q.text}
-                      </h4>
-                    </div>
-                    <p className="text-[11px] text-slate-500 line-clamp-1 pr-6">
-                      {q.description}
-                    </p>
-                  </div>
-
-                  <div className="shrink-0 p-1.5 rounded-xl bg-slate-100 group-hover:bg-indigo-600 text-slate-400 group-hover:text-white transition-all">
-                    <ArrowRight className="w-3.5 h-3.5 transform rotate-180" />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Catalog Footer */}
-          <div className="p-2.5 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-            <span>לחץ על כל שאלה כדי לשלוח אותה מיידית</span>
-            <button
-              onClick={() => setShowCatalog(false)}
-              className="text-indigo-600 font-bold hover:underline"
-            >
-              סגור מאגר שאלות
-            </button>
-          </div>
-
-        </div>
-      ) : (
-        /* VIEW B: Active Chat Messages View */
-        <>
-          {/* Quick horizontal category chip bar */}
-          <div className="bg-slate-50/90 border-b border-slate-200/70 px-3 py-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setShowCatalog(true)}
-              className="whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-2xs flex items-center gap-1 transition-all cursor-pointer shrink-0"
-            >
-              <BookOpen className="w-3 h-3" />
-              <span>כל המאגר ({CATEGORIZED_QUESTIONS.length})</span>
-            </button>
-
-            {/* Quick popular chips */}
-            {CATEGORIZED_QUESTIONS.slice(0, 5).map((sq) => (
-              <button
-                key={sq.id}
-                onClick={() => handleSend(sq.text)}
-                className="whitespace-nowrap bg-white hover:bg-indigo-50 text-indigo-950 text-[11px] font-medium px-2.5 py-1 rounded-full border border-slate-200/80 shadow-2xs hover:border-indigo-300 transition-all cursor-pointer shrink-0"
-              >
-                {sq.text}
-              </button>
-            ))}
-          </div>
-
-          {/* Messages Scroll Area */}
+        {/* ============================================================== */}
+        {/* PANEL 2: Conversation & Live Answers (Left Side)               */}
+        {/* ============================================================== */}
+        <div
+          className={`flex-1 flex flex-col bg-white overflow-hidden ${
+            mobileTab === 'chat' ? 'flex' : 'hidden md:flex'
+          }`}
+        >
+          {/* Messages Stream */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/30 text-xs">
             {messages.map((msg) => (
               <div
@@ -392,12 +467,12 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
                       : 'bg-white text-slate-800 border border-slate-200/90 rounded-bl-xs'
                   }`}
                 >
-                  {/* Message text with newline support */}
-                  <div className="whitespace-pre-line leading-relaxed">
+                  {/* Message Text with newlines */}
+                  <div className="whitespace-pre-line leading-relaxed text-xs">
                     {msg.text}
                   </div>
 
-                  {/* Structured Data Attachment (Cards/Lists/Tables) */}
+                  {/* Structured Financial Data (KPI Cards / Mini Tables) */}
                   {msg.structuredData && msg.structuredData.items && (
                     <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1.5">
                       {msg.structuredData.title && (
@@ -469,12 +544,12 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
                 <div className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-200/50 flex items-center justify-center">
                   <Bot className="w-3.5 h-3.5" />
                 </div>
-                <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2 flex items-center gap-1 shadow-2xs">
+                <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2 flex items-center gap-1.5 shadow-2xs">
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce"></div>
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]"></div>
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.4s]"></div>
-                  <span className="text-[11px] font-medium text-slate-500 mr-1.5">
-                    מנתח נתונים תקציביים...
+                  <span className="text-[11px] font-medium text-slate-500 mr-1">
+                    מנתח נתוני תקציב והוצאות...
                   </span>
                 </div>
               </div>
@@ -483,7 +558,7 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input bar */}
+          {/* Bottom Custom Query Input */}
           <div className="p-3 bg-white border-t border-slate-200">
             <form
               onSubmit={(e) => {
@@ -493,12 +568,12 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
               className="flex items-center gap-2"
             >
               <input
-                ref={inputRef}
+                ref={chatInputRef}
                 type="text"
-                placeholder="הקלד שאלה או בחר ממאגר השאלות למעלה..."
+                placeholder="הקלד שאלה חופשית בעברית או בחר שאלה מהסרגל..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
               />
               <button
                 type="submit"
@@ -510,8 +585,10 @@ export const SmartBudgetChat: React.FC<SmartBudgetChatProps> = ({
               </button>
             </form>
           </div>
-        </>
-      )}
+
+        </div>
+
+      </div>
 
     </div>
   );

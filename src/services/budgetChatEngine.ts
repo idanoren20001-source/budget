@@ -22,226 +22,309 @@ export interface ChatMessage {
 
 export type QuestionCategoryType =
   | 'all'
+  | 'operations'
+  | 'vehicles'
+  | 'catering'
+  | 'it'
+  | 'realestate'
   | 'months'
   | 'quarters'
   | 'annual'
-  | 'groups'
   | 'vendors'
-  | 'alerts'
-  | 'audit';
+  | 'alerts';
 
 export interface CatalogQuestion {
   id: string;
   text: string;
   category: QuestionCategoryType;
   description: string;
+  keywords: string[];
 }
 
 export interface QuestionCategoryMeta {
   key: QuestionCategoryType;
   label: string;
   iconName: string;
-  badgeCount?: number;
 }
 
 export const QUESTION_CATEGORIES: QuestionCategoryMeta[] = [
-  { key: 'all', label: 'כל השאלות', iconName: 'Layers' },
+  { key: 'all', label: 'הכל', iconName: 'Layers' },
+  { key: 'operations', label: 'תפעול ואחזקה', iconName: 'Wrench' },
+  { key: 'vehicles', label: 'רכבים ודלק', iconName: 'Car' },
   { key: 'months', label: 'חודשים', iconName: 'Calendar' },
   { key: 'quarters', label: 'רבעונים', iconName: 'PieChart' },
-  { key: 'annual', label: 'שנתי ותחזיות', iconName: 'TrendingUp' },
-  { key: 'groups', label: 'קבוצות משאבים', iconName: 'Building2' },
+  { key: 'annual', label: 'שנתי', iconName: 'TrendingUp' },
+  { key: 'catering', label: 'הסעדה וכיבוד', iconName: 'Utensils' },
+  { key: 'it', label: 'תקשורת ומחשוב', iconName: 'Monitor' },
+  { key: 'realestate', label: 'נדל"ן ושכירות', iconName: 'Building' },
   { key: 'vendors', label: 'ספקים ורכש', iconName: 'Briefcase' },
   { key: 'alerts', label: 'חריגות ובקרה', iconName: 'AlertTriangle' },
-  { key: 'audit', label: 'יומן ופעולות', iconName: 'History' },
 ];
 
 export const CATEGORIZED_QUESTIONS: CatalogQuestion[] = [
-  // --- חודשים ---
+  // --- תפעול ואחזקה (Operations) ---
+  {
+    id: 'op1',
+    text: 'כמה הוצאנו בתפעול ואחזקה ומה היתרה שנותרה?',
+    category: 'operations',
+    description: 'בדיקת ביצוע בפועל מול תקציב ויתרה בקבוצת תפעול ואחזקה',
+    keywords: ['תפעול', 'אחזקה', 'תפעול ואחזקה', 'תקציב תפעול', 'יתרה', 'ביצוע'],
+  },
+  {
+    id: 'op2',
+    text: 'מה הסעיף היקר ביותר בתפעול ואחזקה?',
+    category: 'operations',
+    description: 'איתור סעיף ה-FI עם ההוצאה הגבוהה ביותר בתפעול',
+    keywords: ['תפעול', 'אחזקה', 'סעיף יקר', 'הכי יקר', 'הוצאה גדולה'],
+  },
+  {
+    id: 'op3',
+    text: 'כמה שילמנו על חשמל ומים בתפעול ואחזקה?',
+    category: 'operations',
+    description: 'ריכוז הוצאות חשמל, מים ואנרגיה למבנים',
+    keywords: ['תפעול', 'חשמל', 'מים', 'חברת חשמל', 'אנרגיה', 'אחזקה'],
+  },
+  {
+    id: 'op4',
+    text: 'האם יש חריגות בסעיפי תפעול ואחזקה?',
+    category: 'operations',
+    description: 'בדיקת סעיפי תפעול מעל 100% או באזהרה (80-99%)',
+    keywords: ['תפעול', 'אחזקה', 'חריגה', 'חריגות', 'אזהרה', 'אדום'],
+  },
+  {
+    id: 'op5',
+    text: 'מי הספקים המובילים בתפעול ואחזקה?',
+    category: 'operations',
+    description: 'דירוג נותני שירות וקבלני אחזקה לפי היקף תשלום',
+    keywords: ['תפעול', 'אחזקה', 'ספקים', 'ספק מוביל', 'קבלנים', 'שירות'],
+  },
+
+  // --- רכבים ודלק (Vehicles & Fleet) ---
+  {
+    id: 'vh1',
+    text: 'מה תמונת המצב בסעיפי רכבים ודלק?',
+    category: 'vehicles',
+    description: 'תקציב, הוצאות ליסינג, דלק וביטוחים לצי הרכב',
+    keywords: ['רכב', 'רכבים', 'דלק', 'צי רכב', 'ליסינג', 'סונול', 'פז'],
+  },
+  {
+    id: 'vh2',
+    text: 'כמה הוצאנו על דלק החודש?',
+    category: 'vehicles',
+    description: 'סך תשלומי הדלק והתדלוקים שנרשמו החודש',
+    keywords: ['רכב', 'דלק', 'תדלוק', 'דלקן', 'הוצאות דלק'],
+  },
+  {
+    id: 'vh3',
+    text: 'מה עלות הליסינג החודשית של רכבי החברה?',
+    category: 'vehicles',
+    description: 'חשבוניות ליסינג ושכירות רכב',
+    keywords: ['רכב', 'ליסינג', 'שכירות רכב', 'רכבים'],
+  },
+  {
+    id: 'vh4',
+    text: 'האם יש חריגה בתקציב הרכבים?',
+    category: 'vehicles',
+    description: 'בדיקת ניצול יתר בסעיפי רכב, דלק וביטוחים',
+    keywords: ['רכב', 'רכבים', 'דלק', 'חריגה', 'יתרה'],
+  },
+
+  // --- חודשים (Months) ---
   {
     id: 'm1',
     text: 'כמה כסף הוצאנו בחודש אוקטובר בסך הכל?',
     category: 'months',
     description: 'סך הוצאות, תקציב מאושר, יתרה וחלוקה לפי קבוצות',
+    keywords: ['חודש', 'אוקטובר', 'החודש', 'סך הכל', 'הוצאות החודש'],
   },
   {
     id: 'm2',
     text: 'כמה הוצאנו בחודש ספטמבר ומה הייתה היתרה?',
     category: 'months',
     description: 'בדיקת ביצוע בפועל של החודש הקודם',
+    keywords: ['חודש', 'ספטמבר', 'חודש שעבר', 'ביצוע קודם'],
   },
   {
     id: 'm3',
     text: 'השוואה בין חודש ספטמבר לחודש אוקטובר',
     category: 'months',
     description: 'מגמת שינוי בהוצאות בין שני חודשים עוקבים',
+    keywords: ['חודש', 'השוואה', 'ספטמבר', 'אוקטובר', 'מגמה'],
   },
   {
     id: 'm4',
     text: 'מה הייתה ההוצאה הגדולה ביותר בחודש אוקטובר?',
     category: 'months',
     description: 'שליפת החשבונית והספק בעלי הסכום הגבוה ביותר החודש',
-  },
-  {
-    id: 'm5',
-    text: 'כמה תנועות והוצאות נרשמו בסך הכל החודש?',
-    category: 'months',
-    description: 'היקף הפעילות החשבונאית והתנועות באוקטובר',
+    keywords: ['חודש', 'אוקטובר', 'הוצאה גדולה', 'שיא', 'חשבונית גדולה'],
   },
 
-  // --- רבעונים ---
+  // --- רבעונים (Quarters) ---
   {
     id: 'q1',
     text: 'מה סך ההוצאות והתקציב ברבעון 4 (אוקטובר-דצמבר)?',
     category: 'quarters',
     description: 'תקציב רבעוני משולש מול הוצאות רבעון 4',
+    keywords: ['רבעון', 'רבעון 4', 'q4', 'אוקטובר', 'דצמבר'],
   },
   {
     id: 'q2',
     text: 'מה ביצוע ויתרת רבעון 3 (יולי-ספטמבר)?',
     category: 'quarters',
     description: 'סיכום רבעוני עבור Q3',
+    keywords: ['רבעון', 'רבעון 3', 'q3', 'יולי', 'ספטמבר'],
   },
   {
     id: 'q3',
     text: 'השווה בין רבעון 3 לרבעון 4',
     category: 'quarters',
     description: 'השוואת ביצועים וניצול בין הרבעון השלישי לרביעי',
+    keywords: ['רבעון', 'השוואה', 'רבעון 3', 'רבעון 4', 'q3', 'q4'],
   },
   {
     id: 'q4',
     text: 'מה היתרה התקציבית שנותרה ברבעון הנוכחי?',
     category: 'quarters',
     description: 'כמה כסף נותר לניצול עד סוף הרבעון הנוכחי',
+    keywords: ['רבעון', 'יתרה', 'רבעון נוכחי', 'נותר'],
   },
 
-  // --- שנתי ותחזיות ---
+  // --- שנתי (Annual) ---
   {
     id: 'y1',
     text: 'מה סך התקציב השנתי המאושר לכל הארגון לשנת 2026?',
     category: 'annual',
     description: 'תקציב שנתי כולל (12 חודשים) עבור כל 82 סעיפי ה-FI',
+    keywords: ['שנתי', 'שנה', '2026', 'תקציב שנתי', 'ארגון'],
   },
   {
     id: 'y2',
     text: 'מה סך כל ההוצאות המצטבר מתחילת השנה ועד היום?',
     category: 'annual',
     description: 'הוצאות YTD מצטברות של כל המערכת',
+    keywords: ['שנתי', 'מצטבר', 'ytd', 'מתחילת השנה', 'סך הכל'],
   },
   {
     id: 'y3',
     text: 'מה אחוז הניצול השנתי המצטבר של תקציב הארגון?',
     category: 'annual',
     description: 'כמה אחוזים מתוך התקציב השנתי הכולל נוצלו עד כה',
+    keywords: ['שנתי', 'אחוז ניצול', 'ניצול שנתי', 'קצב'],
   },
   {
     id: 'y4',
     text: 'מה היתרה הכספית השנתית שנותרה לניצול עד סוף 2026?',
     category: 'annual',
     description: 'תקציב פנוי שנותר לכלל סעיפי הארגון לשנה הנוכחית',
+    keywords: ['שנתי', 'יתרה', 'סוף שנה', '2026', 'נותר'],
   },
 
-  // --- קבוצות משאבים ---
+  // --- הסעדה וכיבוד (Catering) ---
   {
-    id: 'g1',
-    text: 'כמה הוצאנו בתפעול ואחזקה ומה היתרה שנותרה?',
-    category: 'groups',
-    description: 'תקציב, ביצוע וספקים מובילים בתפעול ואחזקה',
-  },
-  {
-    id: 'g2',
-    text: 'מה תמונת המצב בסעיפי רכבים ודלק?',
-    category: 'groups',
-    description: 'בדיקת הוצאות ליסינג, דלק, ביטוחים וחניות',
-  },
-  {
-    id: 'g3',
+    id: 'cat1',
     text: 'מה אחוז הניצול בקבוצת הסעדה וכיבוד?',
-    category: 'groups',
+    category: 'catering',
     description: 'בדיקת קייטרינג, שתייה קלה וכיבוד משרדי',
+    keywords: ['הסעדה', 'אוכל', 'כיבוד', 'קייטרינג', 'ארוחות', 'עובדים'],
   },
   {
-    id: 'g4',
-    text: 'כמה הוצאנו על תקשורת ומחשוב?',
-    category: 'groups',
-    description: 'ציוד מחשוב, אינטרנט, סלולר וקווים',
-  },
-  {
-    id: 'g5',
-    text: 'מה המצב התקציבי בנדל"ן ושכירות?',
-    category: 'groups',
-    description: 'שכירות מבנים, ארנונה ודמי ניהול',
-  },
-  {
-    id: 'g6',
-    text: 'איזו קבוצת משאבים היא היקרה ביותר בארגון?',
-    category: 'groups',
-    description: 'דירוג הקבוצות לפי היקף תקציב והוצאה בפועל',
+    id: 'cat2',
+    text: 'כמה הוצאנו על קייטרינג וכיבוד החודש?',
+    category: 'catering',
+    description: 'סך כל חשבוניות ההסעדה החודשיות',
+    keywords: ['הסעדה', 'כיבוד', 'קייטרינג', 'החודש', 'ארוחות'],
   },
 
-  // --- ספקים ורכש ---
+  // --- תקשורת ומחשוב (IT & Comms) ---
+  {
+    id: 'it1',
+    text: 'כמה הוצאנו על תקשורת ומחשוב?',
+    category: 'it',
+    description: 'ציוד מחשוב, אינטרנט, סלולר וקווים',
+    keywords: ['תקשורת', 'מחשוב', 'אינטרנט', 'סלולר', 'מחשבים', 'חומרה', 'it'],
+  },
+  {
+    id: 'it2',
+    text: 'מה עלויות הסלולר והאינטרנט החודש?',
+    category: 'it',
+    description: 'חשבוניות ספקי סלולר וספקי תקשורת',
+    keywords: ['תקשורת', 'סלולר', 'אינטרנט', 'בזק', 'סלקום', 'פרטנר'],
+  },
+
+  // --- נדל"ן ושכירות (Real Estate) ---
+  {
+    id: 're1',
+    text: 'מה המצב התקציבי בנדל"ן ושכירות?',
+    category: 'realestate',
+    description: 'שכירות מבנים, ארנונה ודמי ניהול',
+    keywords: ['נדל"ן', 'נדלן', 'שכירות', 'ארנונה', 'דמי ניהול', 'משרדים'],
+  },
+  {
+    id: 're2',
+    text: 'כמה שילמנו ארנונה ושכירות החודש?',
+    category: 'realestate',
+    description: 'תשלומי ארנונה עירונית ושכירות חודשית',
+    keywords: ['נדל"ן', 'שכירות', 'ארנונה', 'עירייה'],
+  },
+
+  // --- ספקים ורכש (Vendors) ---
   {
     id: 'v1',
     text: 'מי 5 הספקים המובילים עם ההוצאה הגבוהה ביותר?',
     category: 'vendors',
     description: 'דירוג הספקים המרכזיים ומספר החשבוניות ששולמו להם',
+    keywords: ['ספק', 'ספקים', 'ספקים מובילים', 'הכי הרבה', 'רכש'],
   },
   {
     id: 'v2',
     text: 'כמה כסף שילמנו לחברת החשמל?',
     category: 'vendors',
     description: 'בדיקת חשבוניות וסך תשלום לחברת החשמל',
+    keywords: ['ספק', 'חשמל', 'חברת החשמל', 'תשלום לחשמל'],
   },
   {
     id: 'v3',
     text: 'איזה ספק קיבל הכי הרבה חשבוניות נפרדות?',
     category: 'vendors',
     description: 'הספק עם מספר התנועות הגבוה ביותר במערכת',
+    keywords: ['ספק', 'תנועות', 'חשבוניות', 'תשלומים רבים'],
   },
   {
     id: 'v4',
     text: 'מהן 5 ההוצאות הגבוהות ביותר שנרשמו אי פעם?',
     category: 'vendors',
     description: 'החשבוניות הבודדות הגבוהות ביותר בכלל המערכת',
+    keywords: ['הוצאות גדולות', 'חשבונית גדולה', 'שיא', 'הכי יקר'],
   },
 
-  // --- חריגות ובקרה ---
+  // --- חריגות ובקרה (Alerts) ---
   {
     id: 'a1',
     text: 'אילו סעיפי FI נמצאים כרגע בחריגה אדומה (מעל 100%)?',
     category: 'alerts',
     description: 'רשימת כל הסעיפים שחרגו מהתקציב המאושר ושיעור החריגה',
+    keywords: ['חריגה', 'חריגות', 'אדום', 'מעל 100%', 'חורג'],
   },
   {
     id: 'a2',
     text: 'אילו סעיפים נמצאים באזהרה צהובה (80%-99%)?',
     category: 'alerts',
     description: 'סעיפים שמתקרבים למיצוי מלא של התקציב',
+    keywords: ['אזהרה', 'צהוב', '80%', 'קרוב לחריגה', 'גבולי'],
   },
   {
     id: 'a3',
     text: 'מה הסעיף עם החריגה הכספית (בשקלים) הגבוהה ביותר?',
     category: 'alerts',
     description: 'איזה סעיף גרם לחריגה הכספית הגדולה ביותר',
+    keywords: ['חריגה', 'חריגה שקלית', 'הכי חורג', 'הפסד'],
   },
   {
     id: 'a4',
     text: 'האם יש סעיפי תקציב שלא נוצלו כלל (0% ניצול)?',
     category: 'alerts',
     description: 'איתור סעיפי תקציב מאושרים ללא כל ביצוע',
-  },
-
-  // --- יומן ופעולות ---
-  {
-    id: 'u1',
-    text: 'מהם השינויים האחרונים שבוצעו בתקציב?',
-    category: 'audit',
-    description: 'שליפת עדכוני תקציב ושינויים שבוצעו לאחרונה',
-  },
-  {
-    id: 'u2',
-    text: 'כמה הוצאות ופעולות נרשמו בסך הכל ביומן?',
-    category: 'audit',
-    description: 'סטטיסטיקת יומן הפעולות והשינויים',
+    keywords: ['0%', 'לא נוצל', 'ללא הוצאות', 'פנוי לחלוטין'],
   },
 ];
 
@@ -272,19 +355,11 @@ export function answerBudgetQuestion(
   const q = query.trim().toLowerCase();
   const targetYear = 2026;
 
-  // 1. Detect Quarter (רבעון 1, רבעון 2, רבעון 3, רבעון 4 / Q1..Q4)
-  let targetQuarter: number | null = null;
-  const qMatch = q.match(/רבעון\s*([1-4])/i) || q.match(/q([1-4])/i);
-  if (qMatch) {
-    targetQuarter = parseInt(qMatch[1], 10);
-  }
-
-  // 2. Detect Comparison (השוואה בין רבעון X לרבעון Y או בין חודש X לחודש Y)
-  const isQuarterComparison =
+  // 1. Detect Quarter Comparison (השוואה בין רבעון X לרבעון Y)
+  const isComparison =
     q.includes('השווה') || q.includes('השוואה') || q.includes('השוואת');
 
-  if (isQuarterComparison && (q.includes('רבעון 3') && q.includes('רבעון 4'))) {
-    // Compare Q3 and Q4
+  if (isComparison && (q.includes('רבעון 3') && q.includes('רבעון 4'))) {
     const getQuarterExpenses = (quarter: number) => {
       const startMonth = (quarter - 1) * 3 + 1;
       const endMonth = startMonth + 2;
@@ -336,8 +411,8 @@ export function answerBudgetQuestion(
     };
   }
 
-  // 3. Month Comparison (ספטמבר מול אוקטובר)
-  if (isQuarterComparison && (q.includes('ספטמבר') && q.includes('אוקטובר'))) {
+  // 2. Month Comparison (ספטמבר מול אוקטובר)
+  if (isComparison && (q.includes('ספטמבר') && q.includes('אוקטובר'))) {
     const getMonthExpenses = (month: number) =>
       expenses.filter((e) => {
         const [y, m] = e.date.split('-').map(Number);
@@ -382,7 +457,13 @@ export function answerBudgetQuestion(
     };
   }
 
-  // 4. Quarter Details Query (רבעון 1, 2, 3, 4)
+  // 3. Quarter Details Query (רבעון 1, 2, 3, 4)
+  let targetQuarter: number | null = null;
+  const qMatch = q.match(/רבעון\s*([1-4])/i) || q.match(/q([1-4])/i);
+  if (qMatch) {
+    targetQuarter = parseInt(qMatch[1], 10);
+  }
+
   if (targetQuarter) {
     const startMonth = (targetQuarter - 1) * 3 + 1;
     const endMonth = startMonth + 2;
@@ -428,7 +509,7 @@ export function answerBudgetQuestion(
     };
   }
 
-  // 5. Annual and Forecast Queries (שנתי, 2026, תקציב שנתי, סוף שנה)
+  // 4. Annual Queries
   if (
     q.includes('שנתי') ||
     q.includes('תקציב שנתי') ||
@@ -473,104 +554,62 @@ export function answerBudgetQuestion(
     };
   }
 
-  // 6. Zero utilization check (0% ניצול / לא נוצלו כלל)
-  if (q.includes('0%') || q.includes('לא נוצלו') || q.includes('ללא הוצאות')) {
-    const currentMonth = currentFilter.month || 10;
-    const calculated = calculateBudgetItems(budgetItems, expenses, {
-      type: 'monthly',
-      year: targetYear,
-      month: currentMonth,
-    });
+  // 5. Operations specific questions (הסעיף היקר בתפעול / חשמל ומים)
+  if (q.includes('תפעול') || q.includes('אחזקה')) {
+    const opItems = budgetItems.filter((i) => i.group === 'תפעול ואחזקה');
+    const opItemIds = new Set(opItems.map((i) => i.id));
+    const opExpenses = expenses.filter((e) => opItemIds.has(e.budget_item_id));
 
-    const zeroItems = calculated.filter((i) => i.actual_spend === 0);
+    if (q.includes('יקר') || q.includes('הכי יקר') || q.includes('גבוה ביותר')) {
+      const calcOp = calculateBudgetItems(opItems, expenses, currentFilter);
+      const sortedBySpend = [...calcOp].sort((a, b) => b.actual_spend - a.actual_spend);
+      const topOpItem = sortedBySpend[0];
 
-    return {
-      sender: 'assistant',
-      text: `נמצאו **${zeroItems.length} סעיפי תקציב** שטרם נרשמה בהם אף הוצאה בחודש הנוכחי (0% ניצול).\n` +
-        `סך התקציב הפנוי בסעיפים אלו עומד על **${formatCurrency(
-          zeroItems.reduce((s, i) => s + i.adjusted_budget, 0)
-        )}**.\n\nדוגמאות לסעיפים ללא ביצוע החודש:`,
-      structuredData: {
-        type: 'items_list',
-        title: 'סעיפים ללא תנועות החודש',
-        items: zeroItems.slice(0, 5).map((i) => ({
-          label: `${i.fi_code} - ${i.name}`,
-          value: formatCurrency(i.adjusted_budget),
-          secondary: i.group,
-          badge: { text: '0% ניצול', color: 'green' },
-        })),
-      },
-    };
-  }
-
-  // 7. Highest over-budget item (החריגה הכספית הגבוהה ביותר)
-  if (q.includes('חריגה כספית') || q.includes('חריגה הגבוהה ביותר') || q.includes('הכי חורג')) {
-    const currentMonth = currentFilter.month || 10;
-    const calculated = calculateBudgetItems(budgetItems, expenses, {
-      type: 'monthly',
-      year: targetYear,
-      month: currentMonth,
-    });
-
-    const overItems = calculated
-      .filter((i) => i.status === 'over')
-      .sort((a, b) => b.actual_spend - b.adjusted_budget - (a.actual_spend - a.adjusted_budget));
-
-    if (overItems.length === 0) {
       return {
         sender: 'assistant',
-        text: 'מצוין! אין כרגע אף סעיף בחריגה תקציבית החודש.',
+        text: `הסעיף היקר ביותר בקבוצת **תפעול ואחזקה** הוא **${topOpItem.name} (${topOpItem.fi_code})**:\n\n` +
+          `• **ביצוע בפועל:** ${formatCurrency(topOpItem.actual_spend)}\n` +
+          `• **תקציב מותאם:** ${formatCurrency(topOpItem.adjusted_budget)}\n` +
+          `• **אחוז ניצול:** ${topOpItem.utilization_pct.toFixed(1)}% ` +
+          (topOpItem.status === 'over' ? '⚠️ (בחריגה)' : '✅'),
+        structuredData: {
+          type: 'items_list',
+          title: 'סעיפי תפעול מובילים לפי הוצאה',
+          items: sortedBySpend.slice(0, 4).map((i) => ({
+            label: `${i.fi_code} - ${i.name}`,
+            value: formatCurrency(i.actual_spend),
+            secondary: `תקציב: ${formatCurrency(i.adjusted_budget)}`,
+            badge: {
+              text: `${i.utilization_pct.toFixed(0)}%`,
+              color: i.status === 'over' ? 'red' : 'blue',
+            },
+          })),
+        },
       };
     }
 
-    const topOver = overItems[0];
-    const overAmount = topOver.actual_spend - topOver.adjusted_budget;
+    if (q.includes('חשמל') || q.includes('מים')) {
+      const utilityExp = opExpenses.filter(
+        (e) =>
+          e.vendor.includes('חשמל') ||
+          e.vendor.includes('מים') ||
+          e.fi_code === 'FI-1001' ||
+          e.fi_code === 'FI-1002'
+      );
+      const totalUtility = utilityExp.reduce((s, e) => s + e.amount, 0);
 
-    return {
-      sender: 'assistant',
-      text: `הסעיף עם החריגה השקלית הגבוהה ביותר הוא **${topOver.name} (${topOver.fi_code})** מקבוצת ${topOver.group}:\n\n` +
-        `• **תקציב מוקצה:** ${formatCurrency(topOver.adjusted_budget)}\n` +
-        `• **ביצוע בפועל:** ${formatCurrency(topOver.actual_spend)}\n` +
-        `• **סכום החריגה:** ${formatCurrency(overAmount)} (ניצול של ${topOver.utilization_pct.toFixed(0)}%)\n\n` +
-        `להלן סעיפי החריגה המובילים:`,
-      structuredData: {
-        type: 'items_list',
-        title: 'סעיפי החריגה הגבוהים ביותר',
-        items: overItems.slice(0, 4).map((i) => ({
-          label: `${i.fi_code} - ${i.name}`,
-          value: `חריגה של ${formatCurrency(i.actual_spend - i.adjusted_budget)}`,
-          secondary: `ביצוע: ${formatCurrency(i.actual_spend)} מתוך ${formatCurrency(i.adjusted_budget)}`,
-          badge: { text: `${i.utilization_pct.toFixed(0)}%`, color: 'red' },
-        })),
-      },
-    };
-  }
-
-  // 8. Specific Vendor Query (חברת החשמל, ספק מסוים)
-  const vendorQueryMatch = q.match(/שילמנו ל(.+)/) || q.match(/ספק (.+)/);
-  if (q.includes('חברת החשמל') || q.includes('חשמל') || vendorQueryMatch) {
-    const vendorSearchTerm = q.includes('חשמל')
-      ? 'חשמל'
-      : (vendorQueryMatch ? vendorQueryMatch[1].trim() : '');
-
-    const matchingExpenses = expenses.filter((e) =>
-      e.vendor.toLowerCase().includes(vendorSearchTerm.toLowerCase())
-    );
-
-    if (matchingExpenses.length > 0) {
-      const totalPaid = matchingExpenses.reduce((s, e) => s + e.amount, 0);
       return {
         sender: 'assistant',
-        text: `עבור הספק **"${matchingExpenses[0].vendor}"** נרשמו ${matchingExpenses.length} תשלומים בסך כולל של **${formatCurrency(totalPaid)}**:\n\n` +
-          `• תאריך חשבונית אחרונה: ${matchingExpenses[0].date}\n` +
-          `• אסמכתא אחרונה: ${matchingExpenses[0].ref_number}`,
+        text: `הוצאות **חשמל ואנרגיה למבנים** בקבוצת תפעול ואחזקה:\n\n` +
+          `• סך הכל תשלומים שנרשמו: **${formatCurrency(totalUtility)}** (${utilityExp.length} חשבוניות)\n` +
+          `• תשלומים מול חברת החשמל וספקי תשתיות.`,
         structuredData: {
           type: 'table',
-          title: `פירוט תשלומים לספק ${matchingExpenses[0].vendor}`,
-          items: matchingExpenses.map((e) => ({
-            label: `${e.date} • אסמכתא ${e.ref_number}`,
+          title: 'חשבוניות חשמל ואנרגיה',
+          items: utilityExp.map((e) => ({
+            label: `${e.vendor} (${e.date})`,
             value: formatCurrency(e.amount),
-            secondary: e.fi_code,
+            secondary: `אסמכתא: ${e.ref_number}`,
             badge: { text: e.fi_code, color: 'blue' },
           })),
         },
@@ -578,31 +617,42 @@ export function answerBudgetQuestion(
     }
   }
 
-  // 9. Standard Month recognition
-  let targetMonth: number | null = null;
-  for (const [name, num] of Object.entries(MONTH_NAMES_HEBREW)) {
-    if (q.includes(name)) {
-      targetMonth = num;
-      break;
+  // 6. Vehicles specific questions (דלק / ליסינג)
+  if (q.includes('רכב') || q.includes('רכבים') || q.includes('דלק')) {
+    const vhItems = budgetItems.filter((i) => i.group === 'רכבים ודלק');
+    const vhItemIds = new Set(vhItems.map((i) => i.id));
+    const vhExpenses = expenses.filter((e) => vhItemIds.has(e.budget_item_id));
+
+    if (q.includes('דלק')) {
+      const fuelExp = vhExpenses.filter(
+        (e) =>
+          e.vendor.includes('פז') ||
+          e.vendor.includes('דלק') ||
+          e.vendor.includes('סונול') ||
+          e.fi_code === 'FI-2005'
+      );
+      const totalFuel = fuelExp.reduce((s, e) => s + e.amount, 0);
+
+      return {
+        sender: 'assistant',
+        text: `הוצאות **דלק ותדלוקים** לצי הרכב:\n\n` +
+          `• סך הכל הוצאות דלק שנרשמו: **${formatCurrency(totalFuel)}** (${fuelExp.length} תנועות)\n` +
+          `• תדלוקים בחברות הדלק המובילות (פז, סונול, דלק).`,
+        structuredData: {
+          type: 'table',
+          title: 'פירוט הוצאות דלק',
+          items: fuelExp.map((e) => ({
+            label: `${e.vendor} - ${e.date}`,
+            value: formatCurrency(e.amount),
+            secondary: `אסמכתא: ${e.ref_number}`,
+            badge: { text: 'דלק', color: 'blue' },
+          })),
+        },
+      };
     }
   }
 
-  const monthNumMatch = q.match(/חודש\s*(\d{1,2})/);
-  if (monthNumMatch && !targetMonth) {
-    const val = parseInt(monthNumMatch[1], 10);
-    if (val >= 1 && val <= 12) {
-      targetMonth = val;
-    }
-  }
-
-  if (q.includes('החודש') && !targetMonth) {
-    targetMonth = currentFilter.month || new Date().getMonth() + 1;
-  } else if (q.includes('חודש שעבר') && !targetMonth) {
-    const cur = currentFilter.month || new Date().getMonth() + 1;
-    targetMonth = cur > 1 ? cur - 1 : 12;
-  }
-
-  // 10. Standard Group recognition
+  // 7. General Group Spend (תפעול, רכבים, הסעדה, תקשורת, נדל"ן, מחשוב, הנהלה)
   let targetGroup: string | null = null;
   const groupsList = [
     { name: 'תפעול ואחזקה', keys: ['תפעול', 'אחזקה', 'תפעול ואחזקה', 'אחזקת'] },
@@ -621,62 +671,8 @@ export function answerBudgetQuestion(
     }
   }
 
-  const monthName = targetMonth
-    ? Object.keys(MONTH_NAMES_HEBREW).find((k) => MONTH_NAMES_HEBREW[k] === targetMonth) || `חודש ${targetMonth}`
-    : null;
+  const calculated = calculateBudgetItems(budgetItems, expenses, currentFilter);
 
-  const filteredExpenses = expenses.filter((e) => {
-    if (!targetMonth) return true;
-    const [y, m] = e.date.split('-').map(Number);
-    return y === targetYear && m === targetMonth;
-  });
-
-  const filterForCalc: PeriodFilter = {
-    type: 'monthly',
-    year: targetYear,
-    month: targetMonth || currentFilter.month || 10,
-  };
-  const calculated = calculateBudgetItems(budgetItems, expenses, filterForCalc);
-
-  // A. Over-budget / Alerts intent
-  if (q.includes('חריג') || q.includes('חריגה') || q.includes('חריגות') || q.includes('אדום') || q.includes('מעל התקציב')) {
-    const overItems = calculated.filter((i) => i.status === 'over');
-    const warningItems = calculated.filter((i) => i.status === 'warning');
-
-    if (overItems.length === 0 && warningItems.length === 0) {
-      return {
-        sender: 'assistant',
-        text: `חדשות מעולות! ${monthName ? `בחודש ${monthName}` : 'בתקופה הנוכחית'} אין אף סעיף בחריגה או באזהרה. כל הסעיפים עומדים במסגרת התקציב המאושרת (מתחת ל-80% ניצול).`,
-      };
-    }
-
-    const itemsData = [
-      ...overItems.map((i) => ({
-        label: `${i.fi_code} - ${i.name}`,
-        value: `${formatCurrency(i.actual_spend)} (מתוך ${formatCurrency(i.adjusted_budget)})`,
-        secondary: `חריגה של ${formatCurrency(i.actual_spend - i.adjusted_budget)} (${i.utilization_pct.toFixed(0)}%)`,
-        badge: { text: `חריגה (${i.utilization_pct.toFixed(0)}%)`, color: 'red' as const },
-      })),
-      ...warningItems.map((i) => ({
-        label: `${i.fi_code} - ${i.name}`,
-        value: `${formatCurrency(i.actual_spend)} (מתוך ${formatCurrency(i.adjusted_budget)})`,
-        secondary: `נותרו ${formatCurrency(i.remaining_balance)} (${i.utilization_pct.toFixed(0)}%)`,
-        badge: { text: `אזהרה (${i.utilization_pct.toFixed(0)}%)`, color: 'yellow' as const },
-      })),
-    ];
-
-    return {
-      sender: 'assistant',
-      text: `נמצאו ${overItems.length} סעיפים בחריגה אדומה (מעל 100%) ו-${warningItems.length} סעיפים באזהרה (80%-99%) ${monthName ? `עבור חודש ${monthName}` : 'בתקופה הנוכחית'}:`,
-      structuredData: {
-        type: 'items_list',
-        title: 'סעיפים הדורשים תשומת לב תקציבית',
-        items: itemsData,
-      },
-    };
-  }
-
-  // B. Specific Group Spend & Budget
   if (targetGroup) {
     const groupItems = calculated.filter((i) => i.group === targetGroup);
     const totalGroupBudget = groupItems.reduce((s, i) => s + i.adjusted_budget, 0);
@@ -685,12 +681,12 @@ export function answerBudgetQuestion(
     const groupPct = totalGroupBudget > 0 ? (totalGroupSpend / totalGroupBudget) * 100 : 0;
 
     const groupItemIds = new Set(groupItems.map((i) => i.id));
-    const groupExpenses = filteredExpenses.filter((e) => groupItemIds.has(e.budget_item_id));
+    const groupExpenses = expenses.filter((e) => groupItemIds.has(e.budget_item_id));
     const topGroupExpenses = [...groupExpenses].sort((a, b) => b.amount - a.amount).slice(0, 3);
 
     return {
       sender: 'assistant',
-      text: `בקבוצת **${targetGroup}** ${monthName ? `בחודש ${monthName}` : 'בתקופה שנבחרה'}:\n\n` +
+      text: `בקבוצת **${targetGroup}**:\n\n` +
         `• **סך הכל ביצוע בפועל:** ${formatCurrency(totalGroupSpend)}\n` +
         `• **תקציב מוקצה:** ${formatCurrency(totalGroupBudget)}\n` +
         `• **יתרה תקציבית שנותרה:** ${formatCurrency(groupBalance)}\n` +
@@ -711,11 +707,49 @@ export function answerBudgetQuestion(
     };
   }
 
-  // C. Top Vendors / Suppliers intent
+  // 8. Alerts & Over Budget
+  if (q.includes('חריג') || q.includes('חריגה') || q.includes('חריגות') || q.includes('אדום') || q.includes('מעל התקציב')) {
+    const overItems = calculated.filter((i) => i.status === 'over');
+    const warningItems = calculated.filter((i) => i.status === 'warning');
+
+    if (overItems.length === 0 && warningItems.length === 0) {
+      return {
+        sender: 'assistant',
+        text: 'חדשות מעולות! אין אף סעיף בחריגה או באזהרה. כל הסעיפים עומדים במסגרת התקציב המאושרת (מתחת ל-80% ניצול).',
+      };
+    }
+
+    const itemsData = [
+      ...overItems.map((i) => ({
+        label: `${i.fi_code} - ${i.name}`,
+        value: `${formatCurrency(i.actual_spend)} (מתוך ${formatCurrency(i.adjusted_budget)})`,
+        secondary: `חריגה של ${formatCurrency(i.actual_spend - i.adjusted_budget)} (${i.utilization_pct.toFixed(0)}%)`,
+        badge: { text: `חריגה (${i.utilization_pct.toFixed(0)}%)`, color: 'red' as const },
+      })),
+      ...warningItems.map((i) => ({
+        label: `${i.fi_code} - ${i.name}`,
+        value: `${formatCurrency(i.actual_spend)} (מתוך ${formatCurrency(i.adjusted_budget)})`,
+        secondary: `נותרו ${formatCurrency(i.remaining_balance)} (${i.utilization_pct.toFixed(0)}%)`,
+        badge: { text: `אזהרה (${i.utilization_pct.toFixed(0)}%)`, color: 'yellow' as const },
+      })),
+    ];
+
+    return {
+      sender: 'assistant',
+      text: `נמצאו ${overItems.length} סעיפים בחריגה אדומה (מעל 100%) ו-${warningItems.length} סעיפים באזהרה (80%-99%):`,
+      structuredData: {
+        type: 'items_list',
+        title: 'סעיפים הדורשים תשומת לב תקציבית',
+        items: itemsData,
+      },
+    };
+  }
+
+  // 9. Top Vendors
   if (q.includes('ספק') || q.includes('ספקים') || q.includes('ספק מוביל') || q.includes('הכי הרבה')) {
     const vendorMap: Record<string, { total: number; count: number; lastDate: string }> = {};
 
-    filteredExpenses.forEach((e) => {
+    expenses.forEach((e) => {
       const v = e.vendor.trim() || 'לא צוין';
       if (!vendorMap[v]) {
         vendorMap[v] = { total: 0, count: 0, lastDate: e.date };
@@ -732,7 +766,7 @@ export function answerBudgetQuestion(
     if (sortedVendors.length === 0) {
       return {
         sender: 'assistant',
-        text: `לא נמצאו הוצאות או ספקים ${monthName ? `עבור חודש ${monthName}` : 'בתקופה המבוקשת'}.`,
+        text: 'לא נמצאו הוצאות או ספקים במערכת.',
       };
     }
 
@@ -741,7 +775,7 @@ export function answerBudgetQuestion(
 
     return {
       sender: 'assistant',
-      text: `הספק המוביל ${monthName ? `בחודש ${monthName}` : 'במערכת'} הוא **${top1.name}**, עם סך הוצאות של **${formatCurrency(top1.total)}** (${top1.count} תנועות).\n\nלהלן 5 הספקים עם ההוצאה הגבוהה ביותר:`,
+      text: `הספק המוביל במערכת הוא **${top1.name}**, עם סך הוצאות של **${formatCurrency(top1.total)}** (${top1.count} תנועות).\n\nלהלן 5 הספקים המובילים:`,
       structuredData: {
         type: 'vendors_list',
         title: 'ספקים מובילים לפי היקף תשלום',
@@ -755,47 +789,15 @@ export function answerBudgetQuestion(
     };
   }
 
-  // D. Largest / Highest Expenses
-  if (q.includes('גדולות') || q.includes('הכי יקר') || q.includes('גבוהות') || q.includes('הוצאה גדולה')) {
-    const sortedExp = [...filteredExpenses].sort((a, b) => b.amount - a.amount).slice(0, 5);
-    const itemsMap = new Map(budgetItems.map((b) => [b.id, b]));
-
-    return {
-      sender: 'assistant',
-      text: `להלן 5 ההוצאות הגבוהות ביותר שנרשמו ${monthName ? `בחודש ${monthName}` : 'במערכת'}:`,
-      structuredData: {
-        type: 'table',
-        title: 'הוצאות שיא במערכת',
-        items: sortedExp.map((e) => {
-          const item = itemsMap.get(e.budget_item_id);
-          return {
-            label: `${e.vendor} - ${item ? item.name : e.fi_code}`,
-            value: formatCurrency(e.amount),
-            secondary: `${e.date} • אסמכתא: ${e.ref_number}`,
-            badge: { text: e.fi_code, color: 'blue' as const },
-          };
-        }),
-      },
-    };
+  // 10. Month Spend
+  let targetMonth: number | null = null;
+  for (const [name, num] of Object.entries(MONTH_NAMES_HEBREW)) {
+    if (q.includes(name)) {
+      targetMonth = num;
+      break;
+    }
   }
 
-  // E. Remaining balance intent
-  if (q.includes('יתרה') || q.includes('נשאר') || q.includes('נותר')) {
-    const totalBudget = calculated.reduce((s, i) => s + i.adjusted_budget, 0);
-    const totalSpend = calculated.reduce((s, i) => s + i.actual_spend, 0);
-    const totalRemaining = totalBudget - totalSpend;
-    const pct = totalBudget > 0 ? (totalSpend / totalBudget) * 100 : 0;
-
-    return {
-      sender: 'assistant',
-      text: `היתרה התקציבית הכוללת שנותרה ${monthName ? `לחודש ${monthName}` : 'לתקופה הנוכחית'} עומדת על **${formatCurrency(totalRemaining)}**.\n\n` +
-        `• **סך תקציב מוקצה:** ${formatCurrency(totalBudget)}\n` +
-        `• **סך הוצאות בפועל:** ${formatCurrency(totalSpend)}\n` +
-        `• **שיעור ניצול כולל:** ${pct.toFixed(1)}%`,
-    };
-  }
-
-  // F. Specific Month Spend
   if (targetMonth) {
     const monthExpenses = expenses.filter((e) => {
       const [y, m] = e.date.split('-').map(Number);
@@ -806,55 +808,33 @@ export function answerBudgetQuestion(
     const totalMonthBudget = budgetItems.reduce((s, i) => s + i.monthly_budget, 0);
     const monthBalance = totalMonthBudget - totalMonthSpend;
     const monthPct = totalMonthBudget > 0 ? (totalMonthSpend / totalMonthBudget) * 100 : 0;
-
-    const itemMap = new Map(budgetItems.map((b) => [b.id, b]));
-    const groupTotals: Record<string, number> = {};
-    monthExpenses.forEach((e) => {
-      const item = itemMap.get(e.budget_item_id);
-      const grp = item ? item.group : 'אחר';
-      groupTotals[grp] = (groupTotals[grp] || 0) + e.amount;
-    });
-
-    const sortedGroups = Object.entries(groupTotals).sort((a, b) => b[1] - a[1]);
+    const monthHebrew = Object.keys(MONTH_NAMES_HEBREW).find(
+      (k) => MONTH_NAMES_HEBREW[k] === targetMonth
+    );
 
     return {
       sender: 'assistant',
-      text: `בחודש **${monthName} ${targetYear}**:\n\n` +
+      text: `בחודש **${monthHebrew} ${targetYear}**:\n\n` +
         `• **סך הכל הוצאות בפועל:** ${formatCurrency(totalMonthSpend)}\n` +
         `• **תקציב חודשי מאושר:** ${formatCurrency(totalMonthBudget)}\n` +
         `• **יתרה שנותרה לחודש זה:** ${formatCurrency(monthBalance)}\n` +
-        `• **אחוז ניצול כולל:** ${monthPct.toFixed(1)}% (${monthExpenses.length} תנועות הוצאה נרשמו)\n\n` +
-        `להלן חלוקת ההוצאות לפי קבוצות באותו חודש:`,
-      structuredData: {
-        type: 'table',
-        title: `התפלגות הוצאות חודש ${monthName}`,
-        totalAmount: totalMonthSpend,
-        items: sortedGroups.map(([gName, amt]) => ({
-          label: gName,
-          value: formatCurrency(amt),
-          secondary: `${totalMonthSpend > 0 ? ((amt / totalMonthSpend) * 100).toFixed(1) : 0}% מכלל ההוצאות החודש`,
-          badge: { text: `${totalMonthSpend > 0 ? ((amt / totalMonthSpend) * 100).toFixed(0) : 0}%`, color: 'blue' as const },
-        })),
-      },
+        `• **אחוז ניצול כולל:** ${monthPct.toFixed(1)}% (${monthExpenses.length} תנועות הוצאה)`,
     };
   }
 
-  // G. General overview / Default
+  // 11. General Default
   const totalBudget = calculated.reduce((s, i) => s + i.adjusted_budget, 0);
   const totalSpend = calculated.reduce((s, i) => s + i.actual_spend, 0);
   const totalRemaining = totalBudget - totalSpend;
   const pct = totalBudget > 0 ? (totalSpend / totalBudget) * 100 : 0;
-  const overCount = calculated.filter((i) => i.status === 'over').length;
-  const warningCount = calculated.filter((i) => i.status === 'warning').length;
 
   return {
     sender: 'assistant',
-    text: `הנה תמונת המצב התקציבית הנוכחית במערכת:\n\n` +
+    text: `הנה תמונת המצב התקציבית הנוכחית:\n\n` +
       `• **סך תקציב מוקצה:** ${formatCurrency(totalBudget)}\n` +
       `• **סך ביצוע בפועל:** ${formatCurrency(totalSpend)}\n` +
       `• **יתרה תקציבית:** ${formatCurrency(totalRemaining)}\n` +
-      `• **אחוז ניצול ארגוני:** ${pct.toFixed(1)}%\n` +
-      `• **סטטוס בריאות:** ${overCount} סעיפים בחריגה, ${warningCount} באזהרה, ${calculated.length - overCount - warningCount} תקינים.\n\n` +
-      `💡 תוכל לבחור שאלות מוכנות מתוך **מאגר השאלות** לפי קטגוריות (חודשים, רבעונים, שנתי, קבוצות, ספקים וחריגות).`,
+      `• **אחוז ניצול:** ${pct.toFixed(1)}%\n\n` +
+      `💡 תוכל לסנן שאלות מוכנות בסרגל השאלות בצד ימין (למשל לחפש "תפעול" או "רכבים") או להקליד כל שאלה בשפה חופשית.`,
   };
 }
