@@ -112,9 +112,31 @@ export function calculateBudgetItems(
     const hasBudgetOverride =
       item.manual_period_budget_override !== undefined &&
       item.manual_period_budget_override !== null;
+
+    // Calculate base period budget dynamically based on period type
+    let basePeriodBudget = item.monthly_budget * multiplier;
+    if (filter.type === 'annual') {
+      if (item.annual_budget !== undefined && item.annual_budget > 0) {
+        basePeriodBudget = item.annual_budget;
+      }
+    } else if (filter.type === 'quarterly') {
+      const q = filter.quarter || 1;
+      const qKey = `q${q}` as 'q1' | 'q2' | 'q3' | 'q4';
+      if (item.quarterly_budget?.[qKey] !== undefined && item.quarterly_budget[qKey] !== null) {
+        basePeriodBudget = item.quarterly_budget[qKey]!;
+      } else if (item.annual_budget !== undefined && item.annual_budget > 0) {
+        basePeriodBudget = item.annual_budget / 4;
+      }
+    } else if (filter.type === 'monthly') {
+      const m = filter.month || 1;
+      if (item.monthly_breakdown?.[m] !== undefined && item.monthly_breakdown[m] !== null) {
+        basePeriodBudget = item.monthly_breakdown[m]!;
+      }
+    }
+
     const adjusted_budget = hasBudgetOverride
       ? item.manual_period_budget_override!
-      : item.monthly_budget * multiplier;
+      : basePeriodBudget;
 
     const hasActualOverride =
       item.manual_actual_override !== undefined &&

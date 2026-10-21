@@ -29,6 +29,7 @@ interface HeaderProps {
   onExportBudgetReport: () => void;
   onPrint: () => void;
   onOpenExcelImport?: () => void;
+  onOpenBudgetImport?: () => void;
   onOpenExecutiveReport?: () => void;
   onToggleChat?: () => void;
   isChatOpen?: boolean;
@@ -51,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   onExportBudgetReport,
   onPrint,
   onOpenExcelImport,
+  onOpenBudgetImport,
   onOpenExecutiveReport,
   onToggleChat,
   isChatOpen,
@@ -208,7 +210,19 @@ export const Header: React.FC<HeaderProps> = ({
                 title="ייבוא מרוכז של הוצאות מקובץ Excel או CSV"
               >
                 <UploadCloud className="w-3.5 h-3.5 text-emerald-600" />
-                <span>ייבוא אקסל</span>
+                <span>ייבוא הוצאות</span>
+              </button>
+            )}
+
+            {/* Budget Excel Smart Importer */}
+            {onOpenBudgetImport && (
+              <button
+                onClick={onOpenBudgetImport}
+                className="inline-flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-2xs cursor-pointer"
+                title="ייבוא קובצי אקסל של התקציב וסנכרון רבעונים ושנתי"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+                <span>ייבוא תקציב</span>
               </button>
             )}
 

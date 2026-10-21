@@ -16,8 +16,10 @@ import { SmartBudgetChat } from './components/SmartBudgetChat';
 import { SmartAssistantWorkspace } from './components/SmartAssistantWorkspace';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { ExecutiveReportModal } from './components/ExecutiveReportModal';
+import { BudgetExcelImportModal } from './components/BudgetExcelImportModal';
 import { LoginScreen } from './components/LoginScreen';
 import { SiteSelectionScreen } from './components/SiteSelectionScreen';
+import confetti from 'canvas-confetti';
 import { Sparkles } from 'lucide-react';
 
 import {
@@ -76,6 +78,18 @@ export function App() {
     getStoredAuditLogs(currentSite)
   );
 
+  const triggerConfetti = () => {
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.7 },
+      });
+    } catch {
+      // ignore
+    }
+  };
+
   // When activeSite changes, reload that site's data immediately
   useEffect(() => {
     if (activeSite) {
@@ -105,6 +119,7 @@ export function App() {
   const [isCloudSettingsOpen, setIsCloudSettingsOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+  const [isBudgetExcelImportOpen, setIsBudgetExcelImportOpen] = useState(false);
   const [isExecutiveReportOpen, setIsExecutiveReportOpen] = useState(false);
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<BudgetItemCalculated | null>(null);
 
@@ -165,6 +180,8 @@ export function App() {
         setIsBudgetManagerOpen(false);
         setIsCloudSettingsOpen(false);
         setIsBackupModalOpen(false);
+        setIsExcelImportOpen(false);
+        setIsBudgetExcelImportOpen(false);
         setSelectedDrawerItem(null);
         setIsChatOpen(false);
       }
@@ -457,6 +474,45 @@ export function App() {
     [currentSite]
   );
 
+  // Import budget items from Excel (with quarters, annual and categories)
+  const handleImportBudget = useCallback(
+    (newItems: BudgetItem[], targetSite: SiteId, mode: 'replace' | 'merge') => {
+      let finalItems: BudgetItem[] = [];
+      if (mode === 'replace') {
+        finalItems = newItems;
+      } else {
+        // Merge with existing items by FI code
+        const currentStored = getStoredBudgetItems(targetSite);
+        const map = new Map<string, BudgetItem>();
+        currentStored.forEach((item) => map.set(item.fi_code.toLowerCase(), item));
+        newItems.forEach((item) => {
+          const key = item.fi_code.toLowerCase();
+          if (map.has(key)) {
+            map.set(key, { ...map.get(key)!, ...item });
+          } else {
+            map.set(key, item);
+          }
+        });
+        finalItems = Array.from(map.values());
+      }
+
+      saveBudgetItems(finalItems, targetSite, true);
+      if (targetSite === currentSite) {
+        setBudgetItems(finalItems);
+      }
+      logAuditEvent(
+        'budget_update',
+        `תקציב ${targetSite === 'marlog' ? 'מרלוג' : 'קדימה'}`,
+        `נטענו ${newItems.length} סעיפי תקציב מאקסל (${mode === 'replace' ? 'החלפה נקייה' : 'מיזוג'})`,
+        undefined,
+        targetSite
+      );
+      setAuditLogs(getStoredAuditLogs(currentSite));
+      triggerConfetti();
+    },
+    [currentSite]
+  );
+
   // Quick add expense for a specific table row
   const handleQuickAddExpense = useCallback(
     (item: BudgetItemCalculated) => {
@@ -536,6 +592,7 @@ export function App() {
         onExportBudgetReport={handleExportBudgetReport}
         onPrint={handlePrint}
         onOpenExcelImport={() => setIsExcelImportOpen(true)}
+        onOpenBudgetImport={() => setIsBudgetExcelImportOpen(true)}
         onOpenExecutiveReport={() => setIsExecutiveReportOpen(true)}
         onToggleChat={() => setActiveTab(activeTab === 'chat' ? 'dashboard' : 'chat')}
         isChatOpen={activeTab === 'chat'}
@@ -611,6 +668,7 @@ export function App() {
               onUpdateActualSpendOverride={handleUpdateActualSpendOverride}
               onQuickAddExpense={handleQuickAddExpense}
               onSelectItem={handleSelectItem}
+              onOpenBudgetExcelImport={() => setIsBudgetExcelImportOpen(true)}
             />
           </>
         )}
@@ -714,6 +772,7 @@ export function App() {
         onClose={() => setIsBudgetManagerOpen(false)}
         items={budgetItems}
         onSaveItems={handleSaveAllBudgetItems}
+        onOpenBudgetExcelImport={() => setIsBudgetExcelImportOpen(true)}
       />
 
       {/* 3. Cloud Settings and Realtime Modal */}
@@ -768,6 +827,14 @@ export function App() {
         groups={groupSummaries}
         items={calculatedItems}
         periodLabel={periodLabel}
+      />
+
+      {/* 8. Budget Excel Smart Importer Modal */}
+      <BudgetExcelImportModal
+        isOpen={isBudgetExcelImportOpen}
+        onClose={() => setIsBudgetExcelImportOpen(false)}
+        activeSite={currentSite}
+        onImportBudget={handleImportBudget}
       />
 
     </div>

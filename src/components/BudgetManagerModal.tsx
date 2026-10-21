@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   X,
   Search,
@@ -8,6 +8,9 @@ import {
   SlidersHorizontal,
   Check,
   AlertCircle,
+  FileSpreadsheet,
+  Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { BudgetItem } from '../types';
 import { INITIAL_GROUPS } from '../data/initialData';
@@ -18,6 +21,7 @@ interface BudgetManagerModalProps {
   onClose: () => void;
   items: BudgetItem[];
   onSaveItems: (updatedItems: BudgetItem[]) => void;
+  onOpenBudgetExcelImport?: () => void;
 }
 
 export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
@@ -25,6 +29,7 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
   onClose,
   items,
   onSaveItems,
+  onOpenBudgetExcelImport,
 }) => {
   const [localItems, setLocalItems] = useState<BudgetItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,8 +40,9 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
   // New item form
   const [newFiCode, setNewFiCode] = useState('');
   const [newName, setNewName] = useState('');
-  const [newGroup, setNewGroup] = useState(INITIAL_GROUPS[0].name);
+  const [newGroup, setNewGroup] = useState(INITIAL_GROUPS[0]?.name || 'כללי');
   const [newMonthlyBudget, setNewMonthlyBudget] = useState('');
+  const [newAnnualBudget, setNewAnnualBudget] = useState('');
 
   // Sync state when opening modal
   React.useEffect(() => {
@@ -48,21 +54,41 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
     }
   }, [isOpen, items]);
 
+  // Dynamically compute available groups from current items + initial
+  const availableGroups = useMemo(() => {
+    const set = new Set<string>();
+    INITIAL_GROUPS.forEach((g) => set.add(g.name));
+    localItems.forEach((i) => {
+      if (i.group) set.add(i.group);
+    });
+    return Array.from(set).sort();
+  }, [localItems]);
+
   if (!isOpen) return null;
 
   const handleItemChange = (
     id: string,
-    field: 'fi_code' | 'name' | 'monthly_budget',
+    field: 'fi_code' | 'name' | 'monthly_budget' | 'group' | 'annual_budget',
     value: any
   ) => {
     setLocalItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          return {
+          const updated: any = {
             ...item,
-            [field]: field === 'monthly_budget' ? parseFloat(value) || 0 : value,
+            [field]:
+              field === 'monthly_budget' || field === 'annual_budget'
+                ? parseFloat(value) || 0
+                : value,
             updated_at: new Date().toISOString(),
           };
+
+          // If monthly budget changed, auto-update annual if not independently overridden
+          if (field === 'monthly_budget' && (!item.annual_budget || item.annual_budget === item.monthly_budget * 12)) {
+            updated.annual_budget = (parseFloat(value) || 0) * 12;
+          }
+
+          return updated;
         }
         return item;
       })
@@ -80,16 +106,25 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
   const handleAddNewItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFiCode.trim() || !newName.trim()) {
-      alert('נא למלא קוד FI ושם סעיף');
+      alert('נא להזין קוד FI ושם סעיף');
       return;
     }
-    const budgetVal = parseFloat(newMonthlyBudget) || 0;
+    const monthlyVal = parseFloat(newMonthlyBudget) || 0;
+    const annualVal = parseFloat(newAnnualBudget) || monthlyVal * 12;
+
     const newItem: BudgetItem = {
       id: `bi-custom-${Date.now()}`,
       fi_code: newFiCode.trim(),
       name: newName.trim(),
       group: newGroup,
-      monthly_budget: budgetVal,
+      monthly_budget: monthlyVal,
+      annual_budget: annualVal,
+      quarterly_budget: {
+        q1: Math.round(annualVal / 4),
+        q2: Math.round(annualVal / 4),
+        q3: Math.round(annualVal / 4),
+        q4: Math.round(annualVal / 4),
+      },
       updated_at: new Date().toISOString(),
     };
 
@@ -98,6 +133,7 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
     setNewFiCode('');
     setNewName('');
     setNewMonthlyBudget('');
+    setNewAnnualBudget('');
     setShowAddNew(false);
   };
 
@@ -122,7 +158,7 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6">
-      <div className="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-3xl max-w-5xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 shrink-0">
@@ -132,10 +168,10 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900">
-                ניהול ועריכת תקציבים וקודי FI
+                ניהול סעיפי תקציב וקודי FI
               </h3>
               <p className="text-xs text-slate-400">
-                עריכה מרוכזת של כלל סעיפי הארגון, שינוי קודים והגדרת מסגרות חודשיות
+                עריכה מהירה של כלל סעיפי המערכת, שינוי קודים והגדרות תקציב חודשיות ושנתיות
               </p>
             </div>
           </div>
@@ -147,15 +183,15 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
           </button>
         </div>
 
-        {/* Controls: Search, Filter, and Add New Toggle */}
+        {/* Controls: Search, Filter, Add New Toggle & Excel Import Button */}
         <div className="py-3 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {/* Search */}
             <div className="relative w-full sm:w-60">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" />
               <input
                 type="text"
-                placeholder="חיפוש סעיף או קוד FI..."
+                placeholder="חיפוש לפי סעיף, קטגוריה או FI..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-8 pl-3 py-1.5 text-xs text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
@@ -168,22 +204,38 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
               onChange={(e) => setGroupFilter(e.target.value)}
               className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 focus:outline-hidden cursor-pointer"
             >
-              <option value="all">כל הקבוצות</option>
-              {INITIAL_GROUPS.map((g) => (
-                <option key={g.code} value={g.name}>
-                  {g.name}
+              <option value="all">כל הקבוצות ({availableGroups.length})</option>
+              {availableGroups.map((g) => (
+                <option key={g} value={g}>
+                  {g}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
+            {/* Excel Budget Import Trigger */}
+            {onOpenBudgetExcelImport && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenBudgetExcelImport();
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
+                title="העלאת קובצי אקסל של התקציב וסנכרון רבעונים ושנתי"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+                <span>ייבוא תקציב מאקסל</span>
+              </button>
+            )}
+
             <button
               onClick={() => setShowAddNew(!showAddNew)}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-xl transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>הוספת סעיף חדש</span>
+              <span>הוספת סעיף ידני</span>
             </button>
           </div>
         </div>
@@ -197,10 +249,10 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
             <div className="text-xs font-bold text-blue-900 mb-2">
               הוספת סעיף תקציבי חדש למערכת:
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
               <input
                 type="text"
-                placeholder="קוד FI (למשל FI-801)"
+                placeholder="קוד FI (לדוגמה FI-801)"
                 value={newFiCode}
                 onChange={(e) => setNewFiCode(e.target.value)}
                 required
@@ -219,19 +271,26 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
                 onChange={(e) => setNewGroup(e.target.value)}
                 className="bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-xs"
               >
-                {INITIAL_GROUPS.map((g) => (
-                  <option key={g.code} value={g.name}>
-                    {g.name}
+                {availableGroups.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
                   </option>
                 ))}
               </select>
+              <input
+                type="number"
+                placeholder="תקציב חודשי (₪)"
+                value={newMonthlyBudget}
+                onChange={(e) => setNewMonthlyBudget(e.target.value)}
+                required
+                className="bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold"
+              />
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  placeholder="תקציב חודשי (₪)"
-                  value={newMonthlyBudget}
-                  onChange={(e) => setNewMonthlyBudget(e.target.value)}
-                  required
+                  placeholder="תקציב שנתי (₪)"
+                  value={newAnnualBudget}
+                  onChange={(e) => setNewAnnualBudget(e.target.value)}
                   className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold"
                 />
                 <button
@@ -252,70 +311,121 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
               <tr>
                 <th className="py-2.5 px-3 w-28">קוד FI</th>
                 <th className="py-2.5 px-3">שם הסעיף</th>
-                <th className="py-2.5 px-3">קבוצה</th>
-                <th className="py-2.5 px-3 w-36 text-left">תקציב חודשי בסיס (₪)</th>
-                <th className="py-2.5 px-3 w-16 text-center">מחיקה</th>
+                <th className="py-2.5 px-3">קבוצה / קטגוריה</th>
+                <th className="py-2.5 px-3 w-32 text-left">תקציב חודשי (₪)</th>
+                <th className="py-2.5 px-3 w-36 text-left">תקציב שנתי (₪)</th>
+                <th className="py-2.5 px-3 w-28 text-center">רבעונים</th>
+                <th className="py-2.5 px-3 w-16 text-center">פעולות</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                  {/* FI Code */}
-                  <td className="py-2 px-3">
-                    <input
-                      type="text"
-                      value={item.fi_code}
-                      onChange={(e) =>
-                        handleItemChange(item.id, 'fi_code', e.target.value)
-                      }
-                      className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-hidden focus:border-blue-500"
-                    />
-                  </td>
+              {filtered.map((item) => {
+                const annualVal = item.annual_budget || item.monthly_budget * 12;
+                const hasQuarters =
+                  item.quarterly_budget &&
+                  (item.quarterly_budget.q1 !== undefined ||
+                    item.quarterly_budget.q2 !== undefined ||
+                    item.quarterly_budget.q3 !== undefined ||
+                    item.quarterly_budget.q4 !== undefined);
 
-                  {/* Name */}
-                  <td className="py-2 px-3">
-                    <input
-                      type="text"
-                      value={item.name}
-                      onChange={(e) =>
-                        handleItemChange(item.id, 'name', e.target.value)
-                      }
-                      className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-800 font-medium focus:outline-hidden focus:border-blue-500"
-                    />
-                  </td>
-
-                  {/* Group */}
-                  <td className="py-2 px-3 text-slate-500 whitespace-nowrap">
-                    {item.group}
-                  </td>
-
-                  {/* Monthly Budget */}
-                  <td className="py-2 px-3 text-left">
-                    <div className="relative inline-flex items-center w-full">
-                      <span className="absolute right-2 text-slate-400 text-xs">₪</span>
+                return (
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                    {/* FI Code */}
+                    <td className="py-2 px-3">
                       <input
-                        type="number"
-                        value={item.monthly_budget}
+                        type="text"
+                        value={item.fi_code}
                         onChange={(e) =>
-                          handleItemChange(item.id, 'monthly_budget', e.target.value)
+                          handleItemChange(item.id, 'fi_code', e.target.value)
                         }
-                        className="w-full bg-white border border-slate-200 rounded pr-6 pl-2 py-1 text-xs font-bold text-left text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono font-bold text-slate-800 focus:outline-hidden focus:border-blue-500"
                       />
-                    </div>
-                  </td>
+                    </td>
 
-                  {/* Delete Button */}
-                  <td className="py-2 px-3 text-center">
-                    <button
-                      onClick={() => handleDeleteItem(item.id, item.name)}
-                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                      title="מחק סעיף"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    {/* Name */}
+                    <td className="py-2 px-3">
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) =>
+                          handleItemChange(item.id, 'name', e.target.value)
+                        }
+                        className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-800 font-medium focus:outline-hidden focus:border-blue-500"
+                      />
+                    </td>
+
+                    {/* Group */}
+                    <td className="py-2 px-3 text-slate-700 whitespace-nowrap">
+                      <input
+                        type="text"
+                        value={item.group}
+                        onChange={(e) =>
+                          handleItemChange(item.id, 'group', e.target.value)
+                        }
+                        className="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-700 focus:outline-hidden focus:border-blue-500"
+                      />
+                    </td>
+
+                    {/* Monthly Budget */}
+                    <td className="py-2 px-3 text-left">
+                      <div className="relative inline-flex items-center w-full">
+                        <span className="absolute right-2 text-slate-400 text-xs">₪</span>
+                        <input
+                          type="number"
+                          value={item.monthly_budget}
+                          onChange={(e) =>
+                            handleItemChange(item.id, 'monthly_budget', e.target.value)
+                          }
+                          className="w-full bg-white border border-slate-200 rounded pr-6 pl-2 py-1 text-xs font-bold text-left text-slate-900 focus:outline-hidden focus:border-blue-500"
+                        />
+                      </div>
+                    </td>
+
+                    {/* Annual Budget */}
+                    <td className="py-2 px-3 text-left">
+                      <div className="relative inline-flex items-center w-full">
+                        <span className="absolute right-2 text-slate-400 text-xs">₪</span>
+                        <input
+                          type="number"
+                          value={annualVal}
+                          onChange={(e) =>
+                            handleItemChange(item.id, 'annual_budget', e.target.value)
+                          }
+                          className="w-full bg-white border border-slate-200 rounded pr-6 pl-2 py-1 text-xs font-bold text-left text-indigo-900 focus:outline-hidden focus:border-indigo-500"
+                        />
+                      </div>
+                    </td>
+
+                    {/* Quarters Status Badge */}
+                    <td className="py-2 px-3 text-center">
+                      {hasQuarters ? (
+                        <span
+                          className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-200"
+                          title={`Q1: ${formatCurrency(item.quarterly_budget?.q1 || 0)} | Q2: ${formatCurrency(item.quarterly_budget?.q2 || 0)} | Q3: ${formatCurrency(item.quarterly_budget?.q3 || 0)} | Q4: ${formatCurrency(item.quarterly_budget?.q4 || 0)}`}
+                        >
+                          <Check className="w-3 h-3" />
+                          <span>Q1-Q4</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400">
+                          לפי ממוצע
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Delete Button */}
+                    <td className="py-2 px-3 text-center">
+                      <button
+                        onClick={() => handleDeleteItem(item.id, item.name)}
+                        className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                        title="מחק סעיף"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -323,10 +433,10 @@ export const BudgetManagerModal: React.FC<BudgetManagerModalProps> = ({
         {/* Footer Actions */}
         <div className="pt-4 border-t border-slate-200 mt-4 flex items-center justify-between shrink-0">
           <div className="text-xs text-slate-500">
-            סה"כ: <strong>{localItems.length} סעיפים</strong>
+            סה״כ: <strong>{localItems.length} סעיפים</strong>
             {hasChanges && (
               <span className="mr-2 text-amber-600 font-bold">
-                • קיימים שינויים שטרם נשמרו
+                (קיימים שינויים שטרם נשמרו)
               </span>
             )}
           </div>

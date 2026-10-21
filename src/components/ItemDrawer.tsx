@@ -257,6 +257,46 @@ export const ItemDrawer: React.FC<ItemDrawerProps> = ({
             </div>
           </div>
 
+          {/* 2.5 Annual & Quarterly Breakdown Card */}
+          <div className="bg-gradient-to-br from-indigo-50/60 to-slate-50 border border-indigo-100/80 rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span>חלוקת תקציב שנתית ורבעונית</span>
+              </span>
+              <span className="text-xs font-extrabold text-indigo-900 bg-white border border-indigo-200/80 px-2 py-0.5 rounded-lg shadow-2xs font-mono">
+                שנתי: {formatCurrency(item.annual_budget || item.monthly_budget * 12)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 block">רבעון 1 (Q1)</span>
+                <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
+                  {formatCurrency(item.quarterly_budget?.q1 ?? Math.round(item.monthly_budget * 3))}
+                </span>
+              </div>
+              <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 block">רבעון 2 (Q2)</span>
+                <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
+                  {formatCurrency(item.quarterly_budget?.q2 ?? Math.round(item.monthly_budget * 3))}
+                </span>
+              </div>
+              <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 block">רבעון 3 (Q3)</span>
+                <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
+                  {formatCurrency(item.quarterly_budget?.q3 ?? Math.round(item.monthly_budget * 3))}
+                </span>
+              </div>
+              <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-500 block">רבעון 4 (Q4)</span>
+                <span className="text-xs font-bold text-slate-800 font-mono mt-0.5 block">
+                  {formatCurrency(item.quarterly_budget?.q4 ?? Math.round(item.monthly_budget * 3))}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* 3. Item Expenses List */}
           <div>
             <div className="flex items-center justify-between mb-2.5">

@@ -10,6 +10,7 @@ import {
   Eye,
   RotateCcw,
   Sparkles,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { BudgetItemCalculated, HealthStatus } from '../types';
 import { formatCurrency } from '../utils/budgetUtils';
@@ -22,6 +23,7 @@ interface BudgetTableProps {
   onUpdateActualSpendOverride: (itemId: string, newActual: number | null) => void;
   onQuickAddExpense: (item: BudgetItemCalculated) => void;
   onSelectItem: (item: BudgetItemCalculated) => void;
+  onOpenBudgetExcelImport?: () => void;
 }
 
 export const BudgetTable: React.FC<BudgetTableProps> = ({
@@ -31,6 +33,7 @@ export const BudgetTable: React.FC<BudgetTableProps> = ({
   onUpdateActualSpendOverride,
   onQuickAddExpense,
   onSelectItem,
+  onOpenBudgetExcelImport,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
@@ -41,6 +44,16 @@ export const BudgetTable: React.FC<BudgetTableProps> = ({
     field: 'budget' | 'actual';
     value: string;
   } | null>(null);
+
+  // Dynamically compute available groups from current items + initial
+  const availableGroups = React.useMemo(() => {
+    const set = new Set<string>();
+    INITIAL_GROUPS.forEach((g) => set.add(g.name));
+    items.forEach((i) => {
+      if (i.group) set.add(i.group);
+    });
+    return Array.from(set).sort();
+  }, [items]);
 
   const handleStartEdit = (
     e: React.MouseEvent,
@@ -158,14 +171,27 @@ export const BudgetTable: React.FC<BudgetTableProps> = ({
               onChange={(e) => setSelectedGroup(e.target.value)}
               className="w-full sm:w-auto bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
             >
-              <option value="all">כל 7 הקבוצות</option>
-              {INITIAL_GROUPS.map((g) => (
-                <option key={g.code} value={g.name}>
-                  {g.name} ({g.code})
+              <option value="all">כל הקבוצות ({availableGroups.length})</option>
+              {availableGroups.map((groupName) => (
+                <option key={groupName} value={groupName}>
+                  {groupName}
                 </option>
               ))}
             </select>
           </div>
+
+          {/* Quick Excel Budget Import Button */}
+          {onOpenBudgetExcelImport && (
+            <button
+              type="button"
+              onClick={onOpenBudgetExcelImport}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-2xs cursor-pointer"
+              title="העלאת קובצי אקסל של התקציב וסנכרון סעיפים"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+              <span>ייבוא תקציב מאקסל</span>
+            </button>
+          )}
 
         </div>
       </div>

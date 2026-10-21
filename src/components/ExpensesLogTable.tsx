@@ -68,6 +68,16 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
     return detectAnomalies(expenses);
   }, [expenses]);
 
+  // Compute available groups from budget items + initial
+  const availableGroups = useMemo(() => {
+    const set = new Set<string>();
+    INITIAL_GROUPS.forEach((g) => set.add(g.name));
+    budgetItems.forEach((b) => {
+      if (b.group) set.add(b.group);
+    });
+    return Array.from(set).sort();
+  }, [budgetItems]);
+
   const totalAnomaliesCount = useMemo(() => {
     return Array.from(anomaliesMap.values()).reduce((sum, list) => sum + list.length, 0);
   }, [anomaliesMap]);
@@ -302,10 +312,10 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
             onChange={(e) => setSelectedGroup(e.target.value)}
             className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-hidden cursor-pointer"
           >
-            <option value="all">כל הקבוצות</option>
-            {INITIAL_GROUPS.map((g) => (
-              <option key={g.code} value={g.name}>
-                {g.name}
+            <option value="all">כל הקבוצות ({availableGroups.length})</option>
+            {availableGroups.map((groupName) => (
+              <option key={groupName} value={groupName}>
+                {groupName}
               </option>
             ))}
           </select>

@@ -68,6 +68,16 @@ export const SmartAssistantWorkspace: React.FC<SmartAssistantWorkspaceProps> = (
   // Top Filter Bar State
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
   const [selectedPeriodFilter, setSelectedPeriodFilter] = useState<string>('all');
+
+  // Compute available groups dynamically from budget items + initial
+  const availableGroups = useMemo(() => {
+    const set = new Set<string>();
+    INITIAL_GROUPS.forEach((g) => set.add(g.name));
+    budgetItems.forEach((b) => {
+      if (b.group) set.add(b.group);
+    });
+    return Array.from(set).sort();
+  }, [budgetItems]);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('all');
   const [freeSearchText, setFreeSearchText] = useState<string>('');
 
@@ -366,10 +376,10 @@ export const SmartAssistantWorkspace: React.FC<SmartAssistantWorkspaceProps> = (
                 onChange={(e) => setSelectedGroupFilter(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-700 font-bold focus:outline-hidden focus:border-blue-500 cursor-pointer"
               >
-                <option value="all">כל הקבוצות</option>
-                {INITIAL_GROUPS.map((g) => (
-                  <option key={g.code} value={g.name}>
-                    {g.name}
+                <option value="all">כל הקבוצות ({availableGroups.length})</option>
+                {availableGroups.map((groupName) => (
+                  <option key={groupName} value={groupName}>
+                    {groupName}
                   </option>
                 ))}
               </select>

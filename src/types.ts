@@ -4,6 +4,14 @@ export interface BudgetItem {
   name: string;
   group: string;
   monthly_budget: number;
+  annual_budget?: number;
+  quarterly_budget?: {
+    q1?: number;
+    q2?: number;
+    q3?: number;
+    q4?: number;
+  };
+  monthly_breakdown?: Record<number, number>;
   manual_actual_override?: number | null; // Direct manual edit of actual spend
   manual_period_budget_override?: number | null; // Direct manual edit of period budget
   updated_at: string;
