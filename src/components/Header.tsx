@@ -10,7 +10,11 @@ import {
   HardDrive,
   History,
   Sparkles,
+  UploadCloud,
+  FileBarChart2,
+  MessageSquare,
 } from 'lucide-react';
+import { AppTab } from '../types';
 
 interface HeaderProps {
   onOpenNewExpense: () => void;
@@ -20,10 +24,12 @@ interface HeaderProps {
   onExportExpenses: () => void;
   onExportBudgetReport: () => void;
   onPrint: () => void;
+  onOpenExcelImport?: () => void;
+  onOpenExecutiveReport?: () => void;
   onToggleChat?: () => void;
   isChatOpen?: boolean;
-  activeTab: 'dashboard' | 'expenses' | 'audit';
-  setActiveTab: (tab: 'dashboard' | 'expenses' | 'audit') => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
   expensesCount: number;
   auditCount: number;
 }
@@ -36,6 +42,8 @@ export const Header: React.FC<HeaderProps> = ({
   onExportExpenses,
   onExportBudgetReport,
   onPrint,
+  onOpenExcelImport,
+  onOpenExecutiveReport,
   onToggleChat,
   isChatOpen,
   activeTab,
@@ -75,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs (Dashboard / Expenses Log / Audit Trail) */}
+          {/* Navigation Tabs (Dashboard / Expenses Log / Smart Chat / Audit Trail) */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl self-start md:self-auto border border-slate-200/80">
             <button
               onClick={() => setActiveTab('dashboard')}
@@ -87,6 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               דשבורד ראשי
             </button>
+
             <button
               onClick={() => setActiveTab('expenses')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -102,6 +111,22 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               )}
             </button>
+
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeTab === 'chat'
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'text-slate-600 hover:text-indigo-900'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>צ'אט חכם</span>
+              <span className="bg-indigo-100 text-indigo-800 text-[9px] font-black px-1.5 py-0.2 rounded-full">
+                AI
+              </span>
+            </button>
+
             <button
               onClick={() => setActiveTab('audit')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -123,25 +148,6 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Action Buttons */}
           <div className="flex items-center flex-wrap gap-2 no-print">
             
-            {/* AI Smart Assistant Chat Button */}
-            {onToggleChat && (
-              <button
-                onClick={onToggleChat}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer ${
-                  isChatOpen
-                    ? 'bg-indigo-700 text-white shadow-indigo-500/25'
-                    : 'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-900 border border-indigo-200/80 hover:bg-indigo-100/60'
-                }`}
-                title="עוזר תקציבי חכם - שאלות ותשובות"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>עוזר חכם</span>
-                <span className="bg-indigo-200/60 text-indigo-950 text-[9px] px-1 py-0.2 rounded font-black">
-                  AI
-                </span>
-              </button>
-            )}
-
             {/* New Expense Button (Prominent) */}
             <button
               onClick={onOpenNewExpense}
@@ -151,6 +157,30 @@ export const Header: React.FC<HeaderProps> = ({
               <span>הוצאה חדשה</span>
               <kbd className="hidden lg:inline bg-blue-800/40 text-[10px] px-1.5 py-0.5 rounded text-blue-100 font-mono">N</kbd>
             </button>
+
+            {/* Excel Smart Importer */}
+            {onOpenExcelImport && (
+              <button
+                onClick={onOpenExcelImport}
+                className="inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-2xs cursor-pointer"
+                title="ייבוא מרוכז של הוצאות מקובץ Excel או CSV"
+              >
+                <UploadCloud className="w-3.5 h-3.5 text-emerald-600" />
+                <span>ייבוא אקסל</span>
+              </button>
+            )}
+
+            {/* Executive 1-Pager Report */}
+            {onOpenExecutiveReport && (
+              <button
+                onClick={onOpenExecutiveReport}
+                className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-2xs cursor-pointer"
+                title="דוח מנהלים 1-Pager מעוצב להדפסה ולייצוא"
+              >
+                <FileBarChart2 className="w-3.5 h-3.5 text-blue-400" />
+                <span>דוח מנהלים</span>
+              </button>
+            )}
 
             {/* Budget & FI Manager */}
             <button

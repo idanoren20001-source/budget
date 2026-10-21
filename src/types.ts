@@ -19,7 +19,34 @@ export interface Expense {
   ref_number: string;
   notes?: string;
   created_at: string;
+  attachment_name?: string;
+  attachment_type?: string;
+  attachment_data?: string; // Base64 data URL
 }
+
+export type AnomalyType = 'duplicate' | 'spike' | 'missing_ref';
+
+export interface AnomalyAlert {
+  id: string;
+  expenseId: string;
+  type: AnomalyType;
+  severity: 'high' | 'medium';
+  title: string;
+  description: string;
+  matchedExpenseId?: string;
+}
+
+export interface PeriodForecast {
+  dailyBurnRate: number;
+  projectedEndSpend: number;
+  projectedVariance: number;
+  isProjectedOver: boolean;
+  daysPassed: number;
+  totalDays: number;
+  percentTimePassed: number;
+}
+
+export type AppTab = 'dashboard' | 'expenses' | 'audit' | 'chat';
 
 export type PeriodType = 'monthly' | 'quarterly' | 'annual';
 

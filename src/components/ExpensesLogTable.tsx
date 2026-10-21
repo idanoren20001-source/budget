@@ -14,9 +14,13 @@ import {
   Square,
   Layers,
   ArrowUpDown,
+  Paperclip,
+  AlertTriangle,
+  ExternalLink,
+  ShieldAlert,
 } from 'lucide-react';
-import { Expense, BudgetItem } from '../types';
-import { formatCurrency } from '../utils/budgetUtils';
+import { Expense, BudgetItem, AnomalyAlert } from '../types';
+import { formatCurrency, detectAnomalies } from '../utils/budgetUtils';
 import { INITIAL_GROUPS } from '../data/initialData';
 
 interface ExpensesLogTableProps {
@@ -42,6 +46,21 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('all');
+  const [showAnomaliesOnly, setShowAnomaliesOnly] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    name: string;
+    type: string;
+    data: string;
+  } | null>(null);
+
+  // Compute Anomalies (Duplicates, Spikes, Missing Ref)
+  const anomaliesMap = useMemo(() => {
+    return detectAnomalies(expenses);
+  }, [expenses]);
+
+  const totalAnomaliesCount = useMemo(() => {
+    return Array.from(anomaliesMap.values()).reduce((sum, list) => sum + list.length, 0);
+  }, [anomaliesMap]);
 
   // Multi-Selection State
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -86,6 +105,10 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
       const itemName = item ? item.name : '';
 
       if (selectedGroup !== 'all' && groupName !== selectedGroup) {
+        return false;
+      }
+
+      if (showAnomaliesOnly && !anomaliesMap.has(exp.id)) {
         return false;
       }
 
@@ -254,6 +277,22 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
             ))}
           </select>
 
+          {/* Anomaly Filter Toggle Button */}
+          {totalAnomaliesCount > 0 && (
+            <button
+              onClick={() => setShowAnomaliesOnly(!showAnomaliesOnly)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                showAnomaliesOnly
+                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                  : 'bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100'
+              }`}
+              title="סנן והצג רק הוצאות עם חשד לכפילות או קפיצה חריגה בסכום"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+              <span>התראות ובקרה ({totalAnomaliesCount})</span>
+            </button>
+          )}
+
           {/* New Expense button */}
           <button
             onClick={onOpenNewExpense}
@@ -396,13 +435,49 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                     </td>
 
                     {/* Vendor */}
-                    <td className="py-2.5 px-3.5 font-medium text-slate-800 whitespace-nowrap">
-                      {exp.vendor}
+                    <td className="py-2.5 px-3.5 whitespace-nowrap">
+                      <div className="font-medium text-slate-800">{exp.vendor}</div>
+                      {anomaliesMap.has(exp.id) && (
+                        <div className="mt-0.5 space-y-0.5">
+                          {anomaliesMap.get(exp.id)!.map((al) => (
+                            <span
+                              key={al.id}
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
+                                al.type === 'duplicate'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : 'bg-amber-100 text-amber-800 border border-amber-200'
+                              }`}
+                              title={al.description}
+                            >
+                              <AlertTriangle className="w-2.5 h-2.5" />
+                              <span>{al.title}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </td>
 
-                    {/* Reference / Invoice Number */}
-                    <td className="py-2.5 px-3.5 font-mono text-slate-600 whitespace-nowrap">
-                      {exp.ref_number}
+                    {/* Reference / Invoice Number & Attachment */}
+                    <td className="py-2.5 px-3.5 whitespace-nowrap">
+                      <div className="font-mono text-slate-600">{exp.ref_number}</div>
+                      {exp.attachment_data && (
+                        <button
+                          onClick={() =>
+                            setPreviewAttachment({
+                              name: exp.attachment_name || 'חשבונית',
+                              type: exp.attachment_type || 'image/png',
+                              data: exp.attachment_data!,
+                            })
+                          }
+                          className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-1.5 py-0.2 rounded cursor-pointer transition-colors"
+                          title="לחץ לצפייה בצילום החשבונית המקורית"
+                        >
+                          <Paperclip className="w-2.5 h-2.5 text-blue-600" />
+                          <span className="truncate max-w-[100px]">
+                            {exp.attachment_name || 'צפה במסמך'}
+                          </span>
+                        </button>
+                      )}
                     </td>
 
                     {/* Amount (Inline Editable) */}
@@ -748,6 +823,64 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Attachment Lightbox Modal */}
+      {previewAttachment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in"
+          onClick={() => setPreviewAttachment(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-blue-600" />
+                <span className="font-bold text-slate-800 text-sm">
+                  {previewAttachment.name}
+                </span>
+                <span className="text-xs text-slate-400">
+                  ({previewAttachment.type})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewAttachment.data}
+                  download={previewAttachment.name}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>הורד קובץ</span>
+                </a>
+                <button
+                  onClick={() => setPreviewAttachment(null)}
+                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-slate-950/5 min-h-[400px]">
+              {previewAttachment.type.includes('pdf') ? (
+                <iframe
+                  src={previewAttachment.data}
+                  title={previewAttachment.name}
+                  className="w-full h-[650px] rounded-lg border border-slate-200 bg-white"
+                />
+              ) : (
+                <img
+                  src={previewAttachment.data}
+                  alt={previewAttachment.name}
+                  className="max-h-[75vh] max-w-full object-contain rounded-lg shadow-sm"
+                />
+              )}
+            </div>
           </div>
         </div>
       )}

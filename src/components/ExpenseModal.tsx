@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, Check, Calendar, CreditCard, Building2, FileText, MessageSquare } from 'lucide-react';
+import { X, Search, Check, Calendar, CreditCard, Building2, FileText, MessageSquare, Paperclip, Upload, Trash2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { BudgetItem, Expense } from '../types';
 
@@ -25,6 +25,12 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [refNumber, setRefNumber] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   
+  // File Attachment State
+  const [attachmentName, setAttachmentName] = useState<string>('');
+  const [attachmentType, setAttachmentType] = useState<string>('');
+  const [attachmentData, setAttachmentData] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Smart select search state
   const [itemSearch, setItemSearch] = useState<string>('');
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
@@ -40,6 +46,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       setVendor('');
       setRefNumber('');
       setNotes('');
+      setAttachmentName('');
+      setAttachmentType('');
+      setAttachmentData('');
       setItemSearch('');
       setIsDropdownOpen(false);
 
@@ -111,6 +120,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
       vendor: vendor.trim(),
       ref_number: refNumber.trim(),
       notes: notes.trim(),
+      attachment_name: attachmentName || undefined,
+      attachment_type: attachmentType || undefined,
+      attachment_data: attachmentData || undefined,
     });
 
     // Delightful celebration for fast data entry
@@ -334,6 +346,59 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs resize-none"
               />
             </div>
+          </div>
+
+          {/* File Attachment (Invoice / Receipt PDF or Image) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              צירוף צילום חשבונית / מסמך PDF (אופציונלי)
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,image/png,image/jpeg,image/webp"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  setAttachmentName(f.name);
+                  setAttachmentType(f.type);
+                  const r = new FileReader();
+                  r.onload = (ev) => {
+                    setAttachmentData(ev.target?.result as string);
+                  };
+                  r.readAsDataURL(f);
+                }
+              }}
+              className="hidden"
+            />
+            {attachmentName ? (
+              <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold truncate">
+                  <Paperclip className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{attachmentName}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAttachmentName('');
+                    setAttachmentType('');
+                    setAttachmentData('');
+                  }}
+                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-2.5 px-3 border border-dashed border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-blue-50/40 rounded-xl text-xs text-slate-600 font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Upload className="w-4 h-4 text-blue-600" />
+                <span>לחץ להעלאת צילום חשבונית או קובץ PDF</span>
+              </button>
+            )}
           </div>
 
           {/* Footer Actions */}

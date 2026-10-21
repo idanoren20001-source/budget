@@ -13,6 +13,9 @@ import { ItemDrawer } from './components/ItemDrawer';
 import { AuditTrailTable } from './components/AuditTrailTable';
 import { BackupModal } from './components/BackupModal';
 import { SmartBudgetChat } from './components/SmartBudgetChat';
+import { SmartAssistantWorkspace } from './components/SmartAssistantWorkspace';
+import { ExcelImportModal } from './components/ExcelImportModal';
+import { ExecutiveReportModal } from './components/ExecutiveReportModal';
 import { Sparkles } from 'lucide-react';
 
 import {
@@ -22,6 +25,7 @@ import {
   HealthStatus,
   BudgetItemCalculated,
   AuditLog,
+  AppTab,
 } from './types';
 import {
   getStoredBudgetItems,
@@ -70,8 +74,8 @@ export function App() {
   // Traffic Light Status Filter (over, warning, normal, or null for all)
   const [statusFilter, setStatusFilter] = useState<HealthStatus | null>(null);
 
-  // Navigation tab: 'dashboard' | 'expenses' | 'audit'
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'expenses' | 'audit'>('dashboard');
+  // Navigation tab: 'dashboard' | 'expenses' | 'audit' | 'chat'
+  const [activeTab, setActiveTab] = useState<AppTab>('dashboard');
 
   // Modals & Drawer state
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -79,6 +83,8 @@ export function App() {
   const [isBudgetManagerOpen, setIsBudgetManagerOpen] = useState(false);
   const [isCloudSettingsOpen, setIsCloudSettingsOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
+  const [isExecutiveReportOpen, setIsExecutiveReportOpen] = useState(false);
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<BudgetItemCalculated | null>(null);
 
   // Smart Budget Chatbot state
@@ -277,6 +283,29 @@ export function App() {
     [expenses]
   );
 
+  // Batch import expenses from Excel/CSV Importer
+  const handleImportExpenses = useCallback(
+    (newExpensesList: Omit<Expense, 'id' | 'created_at'>[]) => {
+      const created: Expense[] = newExpensesList.map((exp, idx) => ({
+        ...exp,
+        id: `exp_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        created_at: new Date().toISOString(),
+      }));
+      const updated = [...created, ...expenses];
+      setExpenses(updated);
+      saveExpenses(updated, true);
+      logAuditEvent(
+        'expense_create',
+        'ייבוא אקסל',
+        `יובאו בהצלחה ${created.length} הוצאות מקובץ אקסל/CSV בסכום כולל של ${formatCurrency(
+          created.reduce((s, e) => s + e.amount, 0)
+        )}`
+      );
+      setAuditLogs(getStoredAuditLogs());
+    },
+    [expenses]
+  );
+
   // Delete selected audit logs
   const handleBulkDeleteAuditLogs = useCallback(
     (ids: string[]) => {
@@ -423,8 +452,10 @@ export function App() {
         onExportExpenses={handleExportExpenses}
         onExportBudgetReport={handleExportBudgetReport}
         onPrint={handlePrint}
-        onToggleChat={() => setIsChatOpen(!isChatOpen)}
-        isChatOpen={isChatOpen}
+        onOpenExcelImport={() => setIsExcelImportOpen(true)}
+        onOpenExecutiveReport={() => setIsExecutiveReportOpen(true)}
+        onToggleChat={() => setActiveTab(activeTab === 'chat' ? 'dashboard' : 'chat')}
+        isChatOpen={activeTab === 'chat'}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         expensesCount={periodExpenses.length}
@@ -432,7 +463,7 @@ export function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className={`flex-1 w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 ${activeTab === 'chat' ? 'max-w-[1650px]' : 'max-w-7xl'}`}>
         
         {/* Printable Header */}
         <div className="hidden print:block mb-6 pb-4 border-b border-slate-300">
@@ -454,7 +485,7 @@ export function App() {
         </div>
 
         {/* Dynamic Period Selector (Month / Quarter / Year) */}
-        {activeTab !== 'audit' && (
+        {activeTab !== 'audit' && activeTab !== 'chat' && (
           <PeriodSelector filter={filter} onChange={setFilter} />
         )}
 
@@ -503,7 +534,20 @@ export function App() {
           />
         )}
 
-        {/* 3. Audit Trail View with Multi-Selection */}
+        {/* 3. Dedicated Full-Page Smart Assistant Workspace (Matching IDE HR Tree & Filter Bar) */}
+        {activeTab === 'chat' && (
+          <SmartAssistantWorkspace
+            budgetItems={budgetItems}
+            expenses={expenses}
+            currentFilter={filter}
+            onOpenNewExpense={() => {
+              setPreselectedItemId(null);
+              setIsExpenseModalOpen(true);
+            }}
+          />
+        )}
+
+        {/* 4. Audit Trail View with Multi-Selection */}
         {activeTab === 'audit' && (
           <AuditTrailTable
             logs={auditLogs}
@@ -515,9 +559,9 @@ export function App() {
       </main>
 
       {/* Floating Action Button for AI Smart Assistant (Bottom Left) */}
-      {!isChatOpen && (
+      {!isChatOpen && activeTab !== 'chat' && (
         <button
-          onClick={() => setIsChatOpen(true)}
+          onClick={() => setActiveTab('chat')}
           className="fixed bottom-5 left-5 z-40 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white p-3.5 rounded-full shadow-xl shadow-indigo-500/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer no-print group"
           title="פתח עוזר תקציבי חכם (AI)"
         >
@@ -528,7 +572,7 @@ export function App() {
         </button>
       )}
 
-      {/* Smart Budget AI Chatbot Drawer/Window */}
+      {/* Smart Budget AI Chatbot Drawer/Window (Quick side drawer) */}
       <SmartBudgetChat
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
@@ -605,6 +649,24 @@ export function App() {
         onDeleteExpense={handleDeleteExpense}
         onUpdateExpense={handleUpdateExpense}
         onAddExpense={handleSaveExpense}
+        periodLabel={periodLabel}
+      />
+
+      {/* 6. Excel/CSV Smart Importer Modal */}
+      <ExcelImportModal
+        isOpen={isExcelImportOpen}
+        onClose={() => setIsExcelImportOpen(false)}
+        budgetItems={budgetItems}
+        onImportExpenses={handleImportExpenses}
+      />
+
+      {/* 7. Executive 1-Pager Printable Report Modal */}
+      <ExecutiveReportModal
+        isOpen={isExecutiveReportOpen}
+        onClose={() => setIsExecutiveReportOpen(false)}
+        stats={stats}
+        groups={groupSummaries}
+        items={calculatedItems}
         periodLabel={periodLabel}
       />
 
