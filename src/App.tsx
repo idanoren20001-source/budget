@@ -131,7 +131,7 @@ export function App() {
     // 0. Initial load from central server
     initializeStorageFromServer().then((data) => {
       const site = getActiveSiteFromStorage() || 'kadima';
-      if (data.sites?.[site]) {
+      if (data?.sites?.[site]) {
         setBudgetItems(data.sites[site].budgetItems);
         setExpenses(data.sites[site].expenses);
         setAuditLogs(data.sites[site].auditLogs);
@@ -149,7 +149,7 @@ export function App() {
     // 2. Central Server Heartbeat (fetches from other computers every 1.5s)
     const unsubscribeHeartbeat = startServerHeartbeat((remoteData) => {
       const site = getActiveSiteFromStorage() || 'kadima';
-      if (remoteData.sites?.[site]) {
+      if (remoteData?.sites?.[site]) {
         setBudgetItems(remoteData.sites[site].budgetItems);
         setExpenses(remoteData.sites[site].expenses);
         setAuditLogs(remoteData.sites[site].auditLogs);
