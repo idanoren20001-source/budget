@@ -13,8 +13,12 @@ import {
   UploadCloud,
   FileBarChart2,
   MessageSquare,
+  Building2,
+  Boxes,
+  LogOut,
 } from 'lucide-react';
-import { AppTab } from '../types';
+import { AppTab, SiteId } from '../types';
+import { SITES_METADATA } from '../data/initialData';
 
 interface HeaderProps {
   onOpenNewExpense: () => void;
@@ -32,6 +36,10 @@ interface HeaderProps {
   setActiveTab: (tab: AppTab) => void;
   expensesCount: number;
   auditCount: number;
+  activeSite?: SiteId;
+  onSwitchSite?: (site: SiteId) => void;
+  onOpenSiteSelector?: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -50,16 +58,20 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   expensesCount,
   auditCount,
+  activeSite = 'kadima',
+  onSwitchSite,
+  onOpenSiteSelector,
+  onLogout,
 }) => {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between py-3.5 gap-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between py-3 gap-3">
           
-          {/* Logo & System Title */}
-          <div className="flex items-center gap-3.5">
+          {/* Logo & System Title & Facility Switcher */}
+          <div className="flex items-center gap-3">
             <div className="h-11 px-2.5 py-1 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex items-center justify-center">
               <img
                 src="/logo.png"
@@ -69,18 +81,48 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                <h1 className="text-lg font-bold text-slate-900 tracking-tight">
                   בקרת תקציב ומשאבים ארגוניים
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
+                <span className="hidden lg:inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 rounded-full">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                   סנכרון רשת מרכזי פעיל
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                IDE Technologies — ניהול, בקרה ומעקב תקציבי שוטף מול ביצוע בפועל לפי קודי FI
+                IDE Technologies — {activeSite === 'marlog' ? 'מתחם מרלוג (מרכז לוגיסטי ואחסנה)' : 'מתחם קדימה (מטה והנהלה)'}
               </p>
             </div>
+
+            {/* Quick Facility Switcher Buttons */}
+            {activeSite && onSwitchSite && (
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 mr-2">
+                <button
+                  onClick={() => onSwitchSite('kadima')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    activeSite === 'kadima'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="מעבר לתקציב מתחם קדימה"
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>קדימה</span>
+                </button>
+                <button
+                  onClick={() => onSwitchSite('marlog')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    activeSite === 'marlog'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="מעבר לתקציב מרלוג"
+                >
+                  <Boxes className="w-3.5 h-3.5" />
+                  <span>מרלוג</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Navigation Tabs (Dashboard / Expenses Log / Smart Chat / Audit Trail) */}
@@ -263,6 +305,17 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Cloud className="w-3.5 h-3.5" />
             </button>
+
+            {/* Logout button */}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-200"
+                title="יציאה ונעילת המערכת"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
 
           </div>
 

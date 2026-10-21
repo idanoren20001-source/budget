@@ -109,3 +109,52 @@ export const INITIAL_BUDGET_ITEMS: BudgetItem[] = [
 ];
 
 export const INITIAL_EXPENSES: Expense[] = [];
+
+export const INITIAL_BUDGET_ITEMS_KADIMA: BudgetItem[] = INITIAL_BUDGET_ITEMS;
+
+export const INITIAL_GROUPS_MARLOG = [
+  { name: 'תפעול, אחזקה ובינוי מרלוג', code: 'FI-200M', color: '#10b981' },
+  { name: 'אחסנה, אריזה ושינוע', code: 'FI-300M', color: '#8b5cf6' },
+  { name: 'מלגזות, ציוד כבד ורכבים', code: 'FI-700M', color: '#f97316' },
+  { name: 'ארוחות והסעדת עובדי מרלוג', code: 'FI-100M', color: '#3b82f6' },
+  { name: 'תקשורת ומחשוב מרלוג', code: 'FI-400M', color: '#06b6d4' },
+  { name: 'שכירות, ארנונה ואגרות מרלוג', code: 'FI-500M', color: '#f59e0b' },
+  { name: 'בטיחות, אבטחה וכיבוי אש', code: 'FI-600M', color: '#ec4899' },
+];
+
+export const INITIAL_BUDGET_ITEMS_MARLOG: BudgetItem[] = [
+  { id: 'm-201', fi_code: 'FI-201M', name: 'תחזוקת מבנה מרלוג ושערים', group: 'תפעול, אחזקה ובינוי מרלוג', monthly_budget: 15000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-202', fi_code: 'FI-202M', name: 'חשמל מרלוג', group: 'תפעול, אחזקה ובינוי מרלוג', monthly_budget: 45000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-203', fi_code: 'FI-203M', name: 'מים וארנונה מרלוג', group: 'תפעול, אחזקה ובינוי מרלוג', monthly_budget: 12000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-204', fi_code: 'FI-204M', name: 'שירותי ניקיון מרלוג', group: 'תפעול, אחזקה ובינוי מרלוג', monthly_budget: 18000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-301', fi_code: 'FI-301M', name: 'משטחים וציוד אריזה', group: 'אחסנה, אריזה ושינוע', monthly_budget: 25000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-302', fi_code: 'FI-302M', name: 'שירותי שילוח והפצה לוגיסטית', group: 'אחסנה, אריזה ושינוע', monthly_budget: 35000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-701', fi_code: 'FI-701M', name: 'אחזקה וליסינג מלגזות', group: 'מלגזות, ציוד כבד ורכבים', monthly_budget: 28000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-702', fi_code: 'FI-702M', name: 'דלק וסולר תפעולי', group: 'מלגזות, ציוד כבד ורכבים', monthly_budget: 18000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-101', fi_code: 'FI-101M', name: 'ארוחות צהרים עובדי מרלוג', group: 'ארוחות והסעדת עובדי מרלוג', monthly_budget: 22000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-102', fi_code: 'FI-102M', name: 'קפה, חלב וכיבודים מרלוג', group: 'ארוחות והסעדת עובדי מרלוג', monthly_budget: 4500, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-401', fi_code: 'FI-401M', name: 'מסופונים ותקשורת מחסנים', group: 'תקשורת ומחשוב מרלוג', monthly_budget: 12000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-501', fi_code: 'FI-501M', name: 'שכירות מתחם מרלוג', group: 'שכירות, ארנונה ואגרות מרלוג', monthly_budget: 95000, updated_at: '2026-01-01T00:00:00Z' },
+  { id: 'm-601', fi_code: 'FI-601M', name: 'בטיחות אש ואבטחת מרלוג', group: 'בטיחות, אבטחה וכיבוי אש', monthly_budget: 20000, updated_at: '2026-01-01T00:00:00Z' },
+];
+
+export const SITES_METADATA = {
+  kadima: {
+    id: 'kadima' as const,
+    name: 'מתחם קדימה',
+    shortName: 'קדימה',
+    subtitle: 'מטה מרכזי, הנהלה ופיתוח',
+    tag: 'מתחם ראשי',
+    color: 'from-blue-600 to-indigo-700',
+    description: 'ניהול ובקרת תקציב למטה המרכזי בקדימה — תפעול, אחזקה, הנהלה, פיתוח, רכבים ורכש',
+  },
+  marlog: {
+    id: 'marlog' as const,
+    name: 'מרלוג',
+    shortName: 'מרלוג',
+    subtitle: 'מרכז לוגיסטי, אחסנה והפצה',
+    tag: 'מרכז לוגיסטי',
+    color: 'from-emerald-600 to-teal-700',
+    description: 'ניהול ובקרת תקציב למרכז הלוגיסטי (מרלוג) — אחסנה, שינוע, הפצה, מלגזות ותפעול מחסנים',
+  },
+};

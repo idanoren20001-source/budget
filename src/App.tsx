@@ -16,6 +16,8 @@ import { SmartBudgetChat } from './components/SmartBudgetChat';
 import { SmartAssistantWorkspace } from './components/SmartAssistantWorkspace';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { ExecutiveReportModal } from './components/ExecutiveReportModal';
+import { LoginScreen } from './components/LoginScreen';
+import { SiteSelectionScreen } from './components/SiteSelectionScreen';
 import { Sparkles } from 'lucide-react';
 
 import {
@@ -26,6 +28,7 @@ import {
   BudgetItemCalculated,
   AuditLog,
   AppTab,
+  SiteId,
 } from './types';
 import {
   getStoredBudgetItems,
@@ -38,6 +41,10 @@ import {
   subscribeToSync,
   startServerHeartbeat,
   initializeStorageFromServer,
+  checkIsAuthenticated,
+  setAuthenticated,
+  getActiveSiteFromStorage,
+  saveActiveSiteToStorage,
 } from './services/storageService';
 import {
   calculateBudgetItems,
@@ -53,16 +60,30 @@ import {
 } from './services/excelExport';
 
 export function App() {
-  // --- Core State ---
+  // --- Auth & Facility State ---
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => checkIsAuthenticated());
+  const [activeSite, setActiveSite] = useState<SiteId | null>(() => getActiveSiteFromStorage());
+  const currentSite: SiteId = activeSite || 'kadima';
+
+  // --- Core State per Site ---
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(() =>
-    getStoredBudgetItems()
+    getStoredBudgetItems(currentSite)
   );
   const [expenses, setExpenses] = useState<Expense[]>(() =>
-    getStoredExpenses()
+    getStoredExpenses(currentSite)
   );
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() =>
-    getStoredAuditLogs()
+    getStoredAuditLogs(currentSite)
   );
+
+  // When activeSite changes, reload that site's data immediately
+  useEffect(() => {
+    if (activeSite) {
+      setBudgetItems(getStoredBudgetItems(activeSite));
+      setExpenses(getStoredExpenses(activeSite));
+      setAuditLogs(getStoredAuditLogs(activeSite));
+    }
+  }, [activeSite]);
 
   // Period Filter: default to current period (October 2026)
   const [filter, setFilter] = useState<PeriodFilter>({
@@ -92,32 +113,39 @@ export function App() {
 
   // --- Real-time Sync & Multi-PC Heartbeat ---
   useEffect(() => {
-    // 0. Initial load from central server (ensures other computers load fresh server state immediately)
+    // 0. Initial load from central server
     initializeStorageFromServer().then((data) => {
-      setBudgetItems(data.budgetItems);
-      setExpenses(data.expenses);
-      setAuditLogs(data.auditLogs);
+      const site = getActiveSiteFromStorage() || 'kadima';
+      if (data.sites?.[site]) {
+        setBudgetItems(data.sites[site].budgetItems);
+        setExpenses(data.sites[site].expenses);
+        setAuditLogs(data.sites[site].auditLogs);
+      }
     });
 
     // 1. Cross-Tab Broadcast listener
     const unsubscribeBroadcast = subscribeToSync(() => {
-      setBudgetItems(getStoredBudgetItems());
-      setExpenses(getStoredExpenses());
-      setAuditLogs(getStoredAuditLogs());
+      const site = getActiveSiteFromStorage() || 'kadima';
+      setBudgetItems(getStoredBudgetItems(site));
+      setExpenses(getStoredExpenses(site));
+      setAuditLogs(getStoredAuditLogs(site));
     });
 
     // 2. Central Server Heartbeat (fetches from other computers every 1.5s)
     const unsubscribeHeartbeat = startServerHeartbeat((remoteData) => {
-      setBudgetItems(remoteData.budgetItems);
-      setExpenses(remoteData.expenses);
-      setAuditLogs(remoteData.auditLogs);
+      const site = getActiveSiteFromStorage() || 'kadima';
+      if (remoteData.sites?.[site]) {
+        setBudgetItems(remoteData.sites[site].budgetItems);
+        setExpenses(remoteData.sites[site].expenses);
+        setAuditLogs(remoteData.sites[site].auditLogs);
+      }
     });
 
     return () => {
       unsubscribeBroadcast();
       unsubscribeHeartbeat();
     };
-  }, []);
+  }, [activeSite]);
 
   // --- Global Keyboard Shortcuts ---
   useEffect(() => {
@@ -185,7 +213,7 @@ export function App() {
       };
       const updated = [newExp, ...expenses];
       setExpenses(updated);
-      saveExpenses(updated, true);
+      saveExpenses(updated, currentSite, true);
 
       // Audit log
       const item = budgetItems.find((b) => b.id === expenseData.budget_item_id);
@@ -193,11 +221,12 @@ export function App() {
         'expense_create',
         item ? item.name : 'הוצאה',
         `נרשמה הוצאה חדשה: ${formatCurrency(expenseData.amount)} לספק "${expenseData.vendor}" (אסמכתא: ${expenseData.ref_number})`,
-        expenseData.fi_code
+        expenseData.fi_code,
+        currentSite
       );
-      setAuditLogs(getStoredAuditLogs());
+      setAuditLogs(getStoredAuditLogs(currentSite));
     },
-    [expenses, budgetItems]
+    [expenses, budgetItems, currentSite]
   );
 
   // Update existing expense
@@ -208,18 +237,19 @@ export function App() {
         e.id === updatedExp.id ? updatedExp : e
       );
       setExpenses(updated);
-      saveExpenses(updated, true);
+      saveExpenses(updated, currentSite, true);
 
       // Audit log
       logAuditEvent(
         'expense_update',
         `הוצאה ${updatedExp.fi_code}`,
         `עודכנה הוצאה: סכום ${formatCurrency(updatedExp.amount)} (לפני כן: ${prevExp ? formatCurrency(prevExp.amount) : '—'}), ספק: "${updatedExp.vendor}"`,
-        updatedExp.fi_code
+        updatedExp.fi_code,
+        currentSite
       );
-      setAuditLogs(getStoredAuditLogs());
+      setAuditLogs(getStoredAuditLogs(currentSite));
     },
-    [expenses]
+    [expenses, currentSite]
   );
 
   // Delete single expense
@@ -228,7 +258,7 @@ export function App() {
       const expToDelete = expenses.find((e) => e.id === id);
       const updated = expenses.filter((e) => e.id !== id);
       setExpenses(updated);
-      saveExpenses(updated, true);
+      saveExpenses(updated, currentSite, true);
 
       // Audit log
       if (expToDelete) {
@@ -236,12 +266,13 @@ export function App() {
           'expense_delete',
           `הוצאה ${expToDelete.fi_code}`,
           `נמחקה הוצאה בסך ${formatCurrency(expToDelete.amount)} עבור "${expToDelete.vendor}" (אסמכתא: ${expToDelete.ref_number})`,
-          expToDelete.fi_code
+          expToDelete.fi_code,
+          currentSite
         );
       }
-      setAuditLogs(getStoredAuditLogs());
+      setAuditLogs(getStoredAuditLogs(currentSite));
     },
-    [expenses]
+    [expenses, currentSite]
   );
 
   // Bulk Delete Expenses
@@ -252,16 +283,18 @@ export function App() {
       const updated = expenses.filter((e) => !ids.includes(e.id));
 
       setExpenses(updated);
-      saveExpenses(updated, true);
+      saveExpenses(updated, currentSite, true);
 
       logAuditEvent(
         'expense_delete',
         'מחיקה מרוכזת',
-        `נמחקו ${ids.length} הוצאות בסך כולל של ${formatCurrency(totalDeletedSum)}`
+        `נמחקו ${ids.length} הוצאות בסך כולל של ${formatCurrency(totalDeletedSum)}`,
+        undefined,
+        currentSite
       );
-      setAuditLogs(getStoredAuditLogs());
+      setAuditLogs(getStoredAuditLogs(currentSite));
     },
-    [expenses]
+    [expenses, currentSite]
   );
 
   // Bulk Update Expenses
@@ -271,16 +304,18 @@ export function App() {
         ids.includes(e.id) ? { ...e, ...updates } : e
       );
       setExpenses(updated);
-      saveExpenses(updated, true);
+      saveExpenses(updated, currentSite, true);
 
       logAuditEvent(
         'expense_update',
         'עריכה מרוכזת',
-        `עודכנו ${ids.length} הוצאות במקביל (שדות שעודכנו: ${Object.keys(updates).join(', ')})`
+        `עודכנו ${ids.length} הוצאות במקביל (שדות שעודכנו: ${Object.keys(updates).join(', ')})`,
+        undefined,
+        currentSite
       );
-      setAuditLogs(getStoredAuditLogs());
+      setAuditLogs(getStoredAuditLogs(currentSite));
     },
-    [expenses]
+    [expenses, currentSite]
   );
 
   // Clear all expenses (clean slate)
@@ -291,11 +326,11 @@ export function App() {
       )
     ) {
       setExpenses([]);
-      saveExpenses([], true);
-      logAuditEvent('expense_delete', 'איפוס יומן הוצאות', 'כל ההוצאות והחשבוניות נמחקו מהמערכת');
-      setAuditLogs(getStoredAuditLogs());
+      saveExpenses([], currentSite, true);
+      logAuditEvent('expense_delete', 'איפוס יומן הוצאות', 'כל ההוצאות והחשבוניות נמחקו מהמערכת', undefined, currentSite);
+      setAuditLogs(getStoredAuditLogs(currentSite));
     }
-  }, []);
+  }, [currentSite]);
 
   // Batch import expenses from Excel/CSV Importer
   const handleImportExpenses = useCallback(
@@ -307,17 +342,19 @@ export function App() {
       }));
       const updated = [...created, ...expenses];
       setExpenses(updated);
-      saveExpenses(updated, true);
+      saveExpenses(updated, currentSite, true);
       logAuditEvent(
         'expense_create',
         'ייבוא אקסל',
         `יובאו בהצלחה ${created.length} הוצאות מקובץ אקסל/CSV בסכום כולל של ${formatCurrency(
           created.reduce((s, e) => s + e.amount, 0)
-        )}`
+        )}`,
+        undefined,
+        currentSite
       );
-      setAuditLogs(getStoredAuditLogs());
+      setAuditLogs(getStoredAuditLogs(currentSite));
     },
-    [expenses]
+    [expenses, currentSite]
   );
 
   // Delete selected audit logs
@@ -325,9 +362,9 @@ export function App() {
     (ids: string[]) => {
       const updated = auditLogs.filter((l) => !ids.includes(l.id));
       setAuditLogs(updated);
-      saveAuditLogs(updated);
+      saveAuditLogs(updated, currentSite, true);
     },
-    [auditLogs]
+    [auditLogs, currentSite]
   );
 
   // Clear all audit logs
@@ -343,8 +380,8 @@ export function App() {
       },
     ];
     setAuditLogs(freshLog);
-    saveAuditLogs(freshLog);
-  }, []);
+    saveAuditLogs(freshLog, currentSite, true);
+  }, [currentSite]);
 
   // Update single monthly budget (Inline Edit or Drawer)
   const handleUpdateMonthlyBudget = useCallback(
@@ -360,7 +397,7 @@ export function App() {
           : item
       );
       setBudgetItems(updated);
-      saveBudgetItems(updated, true);
+      saveBudgetItems(updated, currentSite, true);
 
       // Audit log
       if (prevItem && prevItem.monthly_budget !== newMonthlyBudget) {
@@ -368,12 +405,13 @@ export function App() {
           'budget_update',
           prevItem.name,
           `תקציב בסיס חודשי שונה מ-${formatCurrency(prevItem.monthly_budget)} ל-${formatCurrency(newMonthlyBudget)}`,
-          prevItem.fi_code
+          prevItem.fi_code,
+          currentSite
         );
-        setAuditLogs(getStoredAuditLogs());
+        setAuditLogs(getStoredAuditLogs(currentSite));
       }
     },
-    [budgetItems]
+    [budgetItems, currentSite]
   );
 
   // Direct manual override of Actual Spend (editing the actual spend cell directly)
@@ -390,7 +428,7 @@ export function App() {
           : item
       );
       setBudgetItems(updated);
-      saveBudgetItems(updated, true);
+      saveBudgetItems(updated, currentSite, true);
 
       if (prevItem) {
         logAuditEvent(
@@ -399,23 +437,24 @@ export function App() {
           newActual !== null
             ? `סכום ביצוע בפועל נקבע ידנית ל-${formatCurrency(newActual)}`
             : `הוסר עדכון ביצוע ידני — חזרה לחישוב אוטומטי מהוצאות`,
-          prevItem.fi_code
+          prevItem.fi_code,
+          currentSite
         );
-        setAuditLogs(getStoredAuditLogs());
+        setAuditLogs(getStoredAuditLogs(currentSite));
       }
     },
-    [budgetItems]
+    [budgetItems, currentSite]
   );
 
   // Batch save all budget items (from Budget Manager Modal)
   const handleSaveAllBudgetItems = useCallback(
     (updatedItems: BudgetItem[]) => {
       setBudgetItems(updatedItems);
-      saveBudgetItems(updatedItems, true);
-      logAuditEvent('budget_update', 'סעיפי תקציב', `בוצע עדכון מרוכז של ${updatedItems.length} סעיפי תקציב`);
-      setAuditLogs(getStoredAuditLogs());
+      saveBudgetItems(updatedItems, currentSite, true);
+      logAuditEvent('budget_update', 'סעיפי תקציב', `בוצע עדכון מרוכז של ${updatedItems.length} סעיפי תקציב`, undefined, currentSite);
+      setAuditLogs(getStoredAuditLogs(currentSite));
     },
-    []
+    [currentSite]
   );
 
   // Quick add expense for a specific table row
@@ -451,10 +490,40 @@ export function App() {
     window.print();
   }, []);
 
+  // 1. Password Protection Gate (Password: ide2026)
+  if (!isAuthenticated) {
+    return (
+      <LoginScreen
+        onLoginSuccess={() => {
+          setAuthenticated(true);
+          setIsAuthenticated(true);
+        }}
+      />
+    );
+  }
+
+  // 2. Facility Selection Landing Screen (קדימה vs מרלוג)
+  if (!activeSite) {
+    return (
+      <SiteSelectionScreen
+        onSelectSite={(site) => {
+          saveActiveSiteToStorage(site);
+          setActiveSite(site);
+        }}
+        onLogout={() => {
+          setAuthenticated(false);
+          setIsAuthenticated(false);
+          saveActiveSiteToStorage(null);
+          setActiveSite(null);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-['Assistant',sans-serif] relative">
       
-      {/* Header with Navigation, Tabs, AI Assistant Button and Quick Actions */}
+      {/* Header with Navigation, Tabs, Facility Switcher and Logout */}
       <Header
         onOpenNewExpense={() => {
           setPreselectedItemId(null);
@@ -474,6 +543,21 @@ export function App() {
         setActiveTab={setActiveTab}
         expensesCount={periodExpenses.length}
         auditCount={auditLogs.length}
+        activeSite={currentSite}
+        onSwitchSite={(site) => {
+          saveActiveSiteToStorage(site);
+          setActiveSite(site);
+        }}
+        onOpenSiteSelector={() => {
+          saveActiveSiteToStorage(null);
+          setActiveSite(null);
+        }}
+        onLogout={() => {
+          setAuthenticated(false);
+          setIsAuthenticated(false);
+          saveActiveSiteToStorage(null);
+          setActiveSite(null);
+        }}
       />
 
       {/* Main Container */}

@@ -1,51 +1,34 @@
-import { BudgetItem, Expense, CloudConfig, AuditLog, DatabasePayload, AuditActionType } from '../types';
-import { INITIAL_BUDGET_ITEMS, INITIAL_EXPENSES } from '../data/initialData';
+import { BudgetItem, Expense, CloudConfig, AuditLog, DatabasePayload, AuditActionType, SiteId, SiteData } from '../types';
+import {
+  INITIAL_BUDGET_ITEMS_KADIMA,
+  INITIAL_BUDGET_ITEMS_MARLOG,
+  INITIAL_EXPENSES,
+} from '../data/initialData';
 
-const BUDGET_ITEMS_KEY = 'agy_budget_control_items_v3';
-const EXPENSES_KEY = 'agy_budget_control_expenses_v3';
-const AUDIT_LOGS_KEY = 'agy_budget_control_audit_v3';
+const BUDGET_ITEMS_KEY_KADIMA = 'agy_budget_control_items_kadima_v1';
+const BUDGET_ITEMS_KEY_MARLOG = 'agy_budget_control_items_marlog_v1';
+const EXPENSES_KEY_KADIMA = 'agy_budget_control_expenses_kadima_v1';
+const EXPENSES_KEY_MARLOG = 'agy_budget_control_expenses_marlog_v1';
+const AUDIT_LOGS_KEY_KADIMA = 'agy_budget_control_audit_kadima_v1';
+const AUDIT_LOGS_KEY_MARLOG = 'agy_budget_control_audit_marlog_v1';
+
 const CLOUD_CONFIG_KEY = 'agy_budget_control_cloud_v3';
 const CHANNEL_NAME = 'agy_budget_control_realtime_channel_v3';
+const AUTH_KEY = 'ide_auth_token';
+const ACTIVE_SITE_KEY = 'ide_active_site';
 
 const INITIAL_AUDIT_LOGS: AuditLog[] = [
   {
     id: 'audit-01',
-    timestamp: '2026-10-18T10:00:00Z',
-    action_type: 'expense_create',
-    entity_name: 'כביש 6',
-    fi_code: 'FI-705',
-    details: 'נרשמה הוצאה חדשה: 9,800 ₪ (ספק: דרך ארץ הייווי בע"מ, אסמכתא: KV-6-1026)',
-    user: 'מנהל תקציב',
-  },
-  {
-    id: 'audit-02',
-    timestamp: '2026-10-16T16:45:00Z',
-    action_type: 'expense_create',
-    entity_name: 'סלופארק לב השרון',
-    fi_code: 'FI-709',
-    details: 'נרשמה הוצאה חדשה: 17,200 ₪ (ספק: סלופארק טכנולוגיות, אסמכתא: CP-2026-10) — חריגה מתקציב בסיס',
-    user: 'מנהל רכב',
-  },
-  {
-    id: 'audit-03',
-    timestamp: '2026-10-15T14:10:00Z',
-    action_type: 'expense_create',
-    entity_name: 'דלק וסונול',
-    fi_code: 'FI-701',
-    details: 'נרשמה הוצאה חדשה: 36,400 ₪ (ספק: סונול ישראל)',
-    user: 'רכש ותפעול',
-  },
-  {
-    id: 'audit-04',
-    timestamp: '2026-10-01T00:00:00Z',
-    action_type: 'budget_update',
-    entity_name: 'כלל הסעיפים',
-    details: 'הגדרת תקציבי בסיס לשנת 2026 (82 סעיפי FI מובנים)',
-    user: 'מערכת מרכזית',
+    timestamp: '2026-10-21T09:00:00Z',
+    action_type: 'system_restore',
+    entity_name: 'מערכת מרכזית',
+    details: 'אתחול מערכת בקרת תקציב IDE Technologies — מוכנה לקליטת נתונים',
+    user: 'מנהל מערכת',
   },
 ];
 
-let currentLocalVersion = 1;
+let currentLocalVersion = 100;
 let isSaving = false;
 
 // Cross-tab broadcast channel
@@ -58,24 +41,75 @@ try {
   console.warn('BroadcastChannel not supported', e);
 }
 
-// ----------------- Synchronous Local Cache Read/Write -----------------
+// ----------------- Auth & Active Site -----------------
 
-export function getStoredBudgetItems(): BudgetItem[] {
-  try {
-    const raw = localStorage.getItem(BUDGET_ITEMS_KEY);
-    if (!raw) return INITIAL_BUDGET_ITEMS;
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_BUDGET_ITEMS;
-  } catch (err) {
-    return INITIAL_BUDGET_ITEMS;
+export function checkIsAuthenticated(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(AUTH_KEY) === 'true';
+}
+
+export function setAuthenticated(val: boolean): void {
+  if (typeof window === 'undefined') return;
+  if (val) {
+    sessionStorage.setItem(AUTH_KEY, 'true');
+  } else {
+    sessionStorage.removeItem(AUTH_KEY);
   }
 }
 
-export function saveBudgetItems(items: BudgetItem[], syncServer = true): void {
+export function getActiveSiteFromStorage(): SiteId | null {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(ACTIVE_SITE_KEY);
+  return stored === 'kadima' || stored === 'marlog' ? stored : null;
+}
+
+export function saveActiveSiteToStorage(site: SiteId | null): void {
+  if (typeof window === 'undefined') return;
+  if (site) {
+    localStorage.setItem(ACTIVE_SITE_KEY, site);
+  } else {
+    localStorage.removeItem(ACTIVE_SITE_KEY);
+  }
+}
+
+// ----------------- Helpers for site keys -----------------
+
+function getBudgetItemsKey(site: SiteId): string {
+  return site === 'marlog' ? BUDGET_ITEMS_KEY_MARLOG : BUDGET_ITEMS_KEY_KADIMA;
+}
+
+function getExpensesKey(site: SiteId): string {
+  return site === 'marlog' ? EXPENSES_KEY_MARLOG : EXPENSES_KEY_KADIMA;
+}
+
+function getAuditLogsKey(site: SiteId): string {
+  return site === 'marlog' ? AUDIT_LOGS_KEY_MARLOG : AUDIT_LOGS_KEY_KADIMA;
+}
+
+function getDefaultBudgetItems(site: SiteId): BudgetItem[] {
+  return site === 'marlog' ? INITIAL_BUDGET_ITEMS_MARLOG : INITIAL_BUDGET_ITEMS_KADIMA;
+}
+
+// ----------------- Local Cache Read/Write per Site -----------------
+
+export function getStoredBudgetItems(site: SiteId = 'kadima'): BudgetItem[] {
   try {
-    localStorage.setItem(BUDGET_ITEMS_KEY, JSON.stringify(items));
+    const key = getBudgetItemsKey(site);
+    const raw = localStorage.getItem(key);
+    if (!raw) return getDefaultBudgetItems(site);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : getDefaultBudgetItems(site);
+  } catch (err) {
+    return getDefaultBudgetItems(site);
+  }
+}
+
+export function saveBudgetItems(items: BudgetItem[], site: SiteId = 'kadima', syncServer = true): void {
+  try {
+    const key = getBudgetItemsKey(site);
+    localStorage.setItem(key, JSON.stringify(items));
     if (broadcastChannel) {
-      broadcastChannel.postMessage({ type: 'BUDGET_ITEMS_UPDATED', timestamp: Date.now() });
+      broadcastChannel.postMessage({ type: 'BUDGET_ITEMS_UPDATED', site, timestamp: Date.now() });
     }
     if (syncServer) {
       syncToServer();
@@ -85,9 +119,10 @@ export function saveBudgetItems(items: BudgetItem[], syncServer = true): void {
   }
 }
 
-export function getStoredExpenses(): Expense[] {
+export function getStoredExpenses(site: SiteId = 'kadima'): Expense[] {
   try {
-    const raw = localStorage.getItem(EXPENSES_KEY);
+    const key = getExpensesKey(site);
+    const raw = localStorage.getItem(key);
     if (!raw) return INITIAL_EXPENSES;
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : INITIAL_EXPENSES;
@@ -96,11 +131,12 @@ export function getStoredExpenses(): Expense[] {
   }
 }
 
-export function saveExpenses(expenses: Expense[], syncServer = true): void {
+export function saveExpenses(expenses: Expense[], site: SiteId = 'kadima', syncServer = true): void {
   try {
-    localStorage.setItem(EXPENSES_KEY, JSON.stringify(expenses));
+    const key = getExpensesKey(site);
+    localStorage.setItem(key, JSON.stringify(expenses));
     if (broadcastChannel) {
-      broadcastChannel.postMessage({ type: 'EXPENSES_UPDATED', timestamp: Date.now() });
+      broadcastChannel.postMessage({ type: 'EXPENSES_UPDATED', site, timestamp: Date.now() });
     }
     if (syncServer) {
       syncToServer();
@@ -110,9 +146,10 @@ export function saveExpenses(expenses: Expense[], syncServer = true): void {
   }
 }
 
-export function getStoredAuditLogs(): AuditLog[] {
+export function getStoredAuditLogs(site: SiteId = 'kadima'): AuditLog[] {
   try {
-    const raw = localStorage.getItem(AUDIT_LOGS_KEY);
+    const key = getAuditLogsKey(site);
+    const raw = localStorage.getItem(key);
     if (!raw) return INITIAL_AUDIT_LOGS;
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : INITIAL_AUDIT_LOGS;
@@ -121,11 +158,12 @@ export function getStoredAuditLogs(): AuditLog[] {
   }
 }
 
-export function saveAuditLogs(logs: AuditLog[], syncServer = true): void {
+export function saveAuditLogs(logs: AuditLog[], site: SiteId = 'kadima', syncServer = true): void {
   try {
-    localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs));
+    const key = getAuditLogsKey(site);
+    localStorage.setItem(key, JSON.stringify(logs));
     if (broadcastChannel) {
-      broadcastChannel.postMessage({ type: 'AUDIT_LOGS_UPDATED', timestamp: Date.now() });
+      broadcastChannel.postMessage({ type: 'AUDIT_LOGS_UPDATED', site, timestamp: Date.now() });
     }
     if (syncServer) {
       syncToServer();
@@ -139,9 +177,10 @@ export function logAuditEvent(
   action_type: AuditActionType,
   entity_name: string,
   details: string,
-  fi_code?: string
+  fi_code?: string,
+  site: SiteId = 'kadima'
 ): void {
-  const currentLogs = getStoredAuditLogs();
+  const currentLogs = getStoredAuditLogs(site);
   const newLog: AuditLog = {
     id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     timestamp: new Date().toISOString(),
@@ -151,16 +190,16 @@ export function logAuditEvent(
     details,
     user: 'מנהל / משתמש',
   };
-  saveAuditLogs([newLog, ...currentLogs], true);
+  saveAuditLogs([newLog, ...currentLogs], site, true);
 }
 
 export function getStoredCloudConfig(): CloudConfig {
   try {
     const raw = localStorage.getItem(CLOUD_CONFIG_KEY);
-    if (!raw) return { provider: 'local', isOnline: navigator.onLine };
+    if (!raw) return { provider: 'local', isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true };
     return JSON.parse(raw);
   } catch (err) {
-    return { provider: 'local', isOnline: navigator.onLine };
+    return { provider: 'local', isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true };
   }
 }
 
@@ -172,24 +211,37 @@ export function saveCloudConfig(config: CloudConfig): void {
   }
 }
 
-export function resetToDefaults(): void {
-  saveBudgetItems(INITIAL_BUDGET_ITEMS, false);
-  saveExpenses(INITIAL_EXPENSES, false);
-  saveAuditLogs(INITIAL_AUDIT_LOGS, false);
-  logAuditEvent('system_restore', 'כלל המערכת', 'איפוס מלא של נתוני המערכת לברירת המחדל המקורית');
-  syncToServer();
-}
-
 // ----------------- Central Server Synchronization (Cross-Device) -----------------
 
 export async function syncToServer(): Promise<void> {
   if (isSaving) return;
   isSaving = true;
   try {
+    const kadimaItems = getStoredBudgetItems('kadima');
+    const kadimaExpenses = getStoredExpenses('kadima');
+    const kadimaLogs = getStoredAuditLogs('kadima');
+
+    const marlogItems = getStoredBudgetItems('marlog');
+    const marlogExpenses = getStoredExpenses('marlog');
+    const marlogLogs = getStoredAuditLogs('marlog');
+
     const payload: DatabasePayload = {
-      budgetItems: getStoredBudgetItems(),
-      expenses: getStoredExpenses(),
-      auditLogs: getStoredAuditLogs(),
+      sites: {
+        kadima: {
+          budgetItems: kadimaItems,
+          expenses: kadimaExpenses,
+          auditLogs: kadimaLogs,
+        },
+        marlog: {
+          budgetItems: marlogItems,
+          expenses: marlogExpenses,
+          auditLogs: marlogLogs,
+        },
+      },
+      // Backward-compatibility mirror for Kadima
+      budgetItems: kadimaItems,
+      expenses: kadimaExpenses,
+      auditLogs: kadimaLogs,
       version: currentLocalVersion,
       lastModified: new Date().toISOString(),
     };
@@ -213,28 +265,61 @@ export async function syncToServer(): Promise<void> {
   }
 }
 
-/**
- * Initializes the client by fetching central server data first.
- * If another computer updated data, this ensures Computer B immediately gets it.
- */
 export async function initializeStorageFromServer(): Promise<{
-  budgetItems: BudgetItem[];
-  expenses: Expense[];
-  auditLogs: AuditLog[];
+  sites: Record<SiteId, SiteData>;
 }> {
   try {
     const res = await fetch('/api/data');
     if (res.ok) {
       const data = await res.json();
-      if (data && data.budgetItems && Array.isArray(data.budgetItems) && data.budgetItems.length > 0) {
-        currentLocalVersion = data.version || 1;
-        localStorage.setItem(BUDGET_ITEMS_KEY, JSON.stringify(data.budgetItems));
-        localStorage.setItem(EXPENSES_KEY, JSON.stringify(data.expenses || []));
-        localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(data.auditLogs || []));
+      if (data && (data.sites || data.budgetItems)) {
+        currentLocalVersion = data.version || 100;
+
+        let kadimaData: SiteData;
+        let marlogData: SiteData;
+
+        if (data.sites?.kadima) {
+          kadimaData = {
+            budgetItems: data.sites.kadima.budgetItems || getDefaultBudgetItems('kadima'),
+            expenses: data.sites.kadima.expenses || [],
+            auditLogs: data.sites.kadima.auditLogs || INITIAL_AUDIT_LOGS,
+          };
+        } else {
+          kadimaData = {
+            budgetItems: data.budgetItems || getDefaultBudgetItems('kadima'),
+            expenses: data.expenses || [],
+            auditLogs: data.auditLogs || INITIAL_AUDIT_LOGS,
+          };
+        }
+
+        if (data.sites?.marlog) {
+          marlogData = {
+            budgetItems: data.sites.marlog.budgetItems || getDefaultBudgetItems('marlog'),
+            expenses: data.sites.marlog.expenses || [],
+            auditLogs: data.sites.marlog.auditLogs || INITIAL_AUDIT_LOGS,
+          };
+        } else {
+          marlogData = {
+            budgetItems: getStoredBudgetItems('marlog'),
+            expenses: getStoredExpenses('marlog'),
+            auditLogs: getStoredAuditLogs('marlog'),
+          };
+        }
+
+        // Cache locally
+        localStorage.setItem(BUDGET_ITEMS_KEY_KADIMA, JSON.stringify(kadimaData.budgetItems));
+        localStorage.setItem(EXPENSES_KEY_KADIMA, JSON.stringify(kadimaData.expenses));
+        localStorage.setItem(AUDIT_LOGS_KEY_KADIMA, JSON.stringify(kadimaData.auditLogs));
+
+        localStorage.setItem(BUDGET_ITEMS_KEY_MARLOG, JSON.stringify(marlogData.budgetItems));
+        localStorage.setItem(EXPENSES_KEY_MARLOG, JSON.stringify(marlogData.expenses));
+        localStorage.setItem(AUDIT_LOGS_KEY_MARLOG, JSON.stringify(marlogData.auditLogs));
+
         return {
-          budgetItems: data.budgetItems,
-          expenses: data.expenses || [],
-          auditLogs: data.auditLogs || [],
+          sites: {
+            kadima: kadimaData,
+            marlog: marlogData,
+          },
         };
       }
     }
@@ -242,15 +327,27 @@ export async function initializeStorageFromServer(): Promise<{
     console.warn('Could not fetch server data on startup, using local cache', e);
   }
 
-  // Fallback to local storage or defaults
-  const budgetItems = getStoredBudgetItems();
-  const expenses = getStoredExpenses();
-  const auditLogs = getStoredAuditLogs();
+  // Fallback to local
+  const kadimaData: SiteData = {
+    budgetItems: getStoredBudgetItems('kadima'),
+    expenses: getStoredExpenses('kadima'),
+    auditLogs: getStoredAuditLogs('kadima'),
+  };
 
-  // If local storage has data but server was empty, push local data to server
+  const marlogData: SiteData = {
+    budgetItems: getStoredBudgetItems('marlog'),
+    expenses: getStoredExpenses('marlog'),
+    auditLogs: getStoredAuditLogs('marlog'),
+  };
+
   syncToServer();
 
-  return { budgetItems, expenses, auditLogs };
+  return {
+    sites: {
+      kadima: kadimaData,
+      marlog: marlogData,
+    },
+  };
 }
 
 let isServerAvailable = true;
@@ -262,7 +359,6 @@ export function startServerHeartbeat(onRemoteUpdate: (data: DatabasePayload) => 
     try {
       const res = await fetch('/api/data');
       if (res.status === 404) {
-        // Static hosting like Netlify Drop without server functions
         isServerAvailable = false;
         return;
       }
@@ -271,10 +367,18 @@ export function startServerHeartbeat(onRemoteUpdate: (data: DatabasePayload) => 
 
       if (data && data.version && data.version > currentLocalVersion) {
         currentLocalVersion = data.version;
-        // Central server has newer data from another computer!
-        localStorage.setItem(BUDGET_ITEMS_KEY, JSON.stringify(data.budgetItems));
-        localStorage.setItem(EXPENSES_KEY, JSON.stringify(data.expenses || []));
-        localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(data.auditLogs || []));
+
+        if (data.sites?.kadima) {
+          localStorage.setItem(BUDGET_ITEMS_KEY_KADIMA, JSON.stringify(data.sites.kadima.budgetItems));
+          localStorage.setItem(EXPENSES_KEY_KADIMA, JSON.stringify(data.sites.kadima.expenses || []));
+          localStorage.setItem(AUDIT_LOGS_KEY_KADIMA, JSON.stringify(data.sites.kadima.auditLogs || []));
+        }
+        if (data.sites?.marlog) {
+          localStorage.setItem(BUDGET_ITEMS_KEY_MARLOG, JSON.stringify(data.sites.marlog.budgetItems));
+          localStorage.setItem(EXPENSES_KEY_MARLOG, JSON.stringify(data.sites.marlog.expenses || []));
+          localStorage.setItem(AUDIT_LOGS_KEY_MARLOG, JSON.stringify(data.sites.marlog.auditLogs || []));
+        }
+
         onRemoteUpdate(data);
 
         if (broadcastChannel) {
@@ -289,7 +393,70 @@ export function startServerHeartbeat(onRemoteUpdate: (data: DatabasePayload) => 
   return () => clearInterval(interval);
 }
 
-// ----------------- Cross-Tab & Storage Listener -----------------
+// ----------------- Backup & Restore Snapshot Helpers -----------------
+
+export function resetToDefaults(site: SiteId = 'kadima'): void {
+  saveBudgetItems(getDefaultBudgetItems(site), site, false);
+  saveExpenses([], site, false);
+  saveAuditLogs(INITIAL_AUDIT_LOGS, site, false);
+  logAuditEvent('system_restore', 'כלל המערכת', 'איפוס מלא של נתוני המערכת לברירת המחדל המקורית', undefined, site);
+  syncToServer();
+}
+
+export function createFullBackupSnapshot(): string {
+  const snapshot: DatabasePayload = {
+    sites: {
+      kadima: {
+        budgetItems: getStoredBudgetItems('kadima'),
+        expenses: getStoredExpenses('kadima'),
+        auditLogs: getStoredAuditLogs('kadima'),
+      },
+      marlog: {
+        budgetItems: getStoredBudgetItems('marlog'),
+        expenses: getStoredExpenses('marlog'),
+        auditLogs: getStoredAuditLogs('marlog'),
+      },
+    },
+    budgetItems: getStoredBudgetItems('kadima'),
+    expenses: getStoredExpenses('kadima'),
+    auditLogs: getStoredAuditLogs('kadima'),
+    version: currentLocalVersion + 1,
+    lastModified: new Date().toISOString(),
+  };
+  return JSON.stringify(snapshot, null, 2);
+}
+
+export function restoreFromSnapshot(jsonString: string): boolean {
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (parsed.sites?.kadima && parsed.sites?.marlog) {
+      saveBudgetItems(parsed.sites.kadima.budgetItems || [], 'kadima', false);
+      saveExpenses(parsed.sites.kadima.expenses || [], 'kadima', false);
+      saveAuditLogs(parsed.sites.kadima.auditLogs || [], 'kadima', false);
+
+      saveBudgetItems(parsed.sites.marlog.budgetItems || [], 'marlog', false);
+      saveExpenses(parsed.sites.marlog.expenses || [], 'marlog', false);
+      saveAuditLogs(parsed.sites.marlog.auditLogs || [], 'marlog', false);
+    } else if (parsed.budgetItems && Array.isArray(parsed.budgetItems)) {
+      saveBudgetItems(parsed.budgetItems, 'kadima', false);
+      saveExpenses(parsed.expenses || [], 'kadima', false);
+      saveAuditLogs(parsed.auditLogs || [], 'kadima', false);
+    } else {
+      throw new Error('קובץ הגיבוי אינו תקין: חסרים סעיפי תקציב');
+    }
+    logAuditEvent(
+      'system_restore',
+      'שחזור מקובץ',
+      'שוחזרו בהצלחה נתוני תקציב והוצאות מקובץ גיבוי'
+    );
+    syncToServer();
+    return true;
+  } catch (err: any) {
+    alert(`שגיאה בטעינת קובץ גיבוי: ${err.message}`);
+    return false;
+  }
+}
+
 
 export function subscribeToSync(onSync: () => void): () => void {
   const handleBroadcast = () => {
@@ -298,10 +465,9 @@ export function subscribeToSync(onSync: () => void): () => void {
 
   const handleStorage = (e: StorageEvent) => {
     if (
-      e.key === BUDGET_ITEMS_KEY ||
-      e.key === EXPENSES_KEY ||
-      e.key === AUDIT_LOGS_KEY ||
-      e.key === CLOUD_CONFIG_KEY
+      e.key?.includes('agy_budget_control') ||
+      e.key === CLOUD_CONFIG_KEY ||
+      e.key === ACTIVE_SITE_KEY
     ) {
       onSync();
     }
@@ -318,39 +484,4 @@ export function subscribeToSync(onSync: () => void): () => void {
     }
     window.removeEventListener('storage', handleStorage);
   };
-}
-
-// ----------------- Backup & Restore Snapshot Helpers -----------------
-
-export function createFullBackupSnapshot(): string {
-  const snapshot: DatabasePayload = {
-    budgetItems: getStoredBudgetItems(),
-    expenses: getStoredExpenses(),
-    auditLogs: getStoredAuditLogs(),
-    version: currentLocalVersion + 1,
-    lastModified: new Date().toISOString(),
-  };
-  return JSON.stringify(snapshot, null, 2);
-}
-
-export function restoreFromSnapshot(jsonString: string): boolean {
-  try {
-    const parsed = JSON.parse(jsonString);
-    if (!parsed.budgetItems || !Array.isArray(parsed.budgetItems)) {
-      throw new Error('קובץ הגיבוי אינו תקין: חסרים סעיפי תקציב');
-    }
-    saveBudgetItems(parsed.budgetItems, false);
-    saveExpenses(parsed.expenses || [], false);
-    saveAuditLogs(parsed.auditLogs || [], false);
-    logAuditEvent(
-      'system_restore',
-      'שחזור מקובץ',
-      `שוחזרו בהצלחה ${parsed.budgetItems.length} סעיפים ו-${(parsed.expenses || []).length} הוצאות`
-    );
-    syncToServer();
-    return true;
-  } catch (err: any) {
-    alert(`שגיאה בטעינת קובץ גיבוי: ${err.message}`);
-    return false;
-  }
 }

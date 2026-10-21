@@ -55,6 +55,14 @@ export interface PeriodForecast {
   percentTimePassed: number;
 }
 
+export type SiteId = 'kadima' | 'marlog';
+
+export interface SiteData {
+  budgetItems: BudgetItem[];
+  expenses: Expense[];
+  auditLogs: AuditLog[];
+}
+
 export type AppTab = 'dashboard' | 'expenses' | 'audit' | 'chat';
 
 export type PeriodType = 'monthly' | 'quarterly' | 'annual';
@@ -133,9 +141,10 @@ export interface AuditLog {
 }
 
 export interface DatabasePayload {
-  budgetItems: BudgetItem[];
-  expenses: Expense[];
-  auditLogs: AuditLog[];
+  budgetItems?: BudgetItem[];
+  expenses?: Expense[];
+  auditLogs?: AuditLog[];
+  sites?: Record<SiteId, SiteData>;
   version: number;
   lastModified: string;
 }
