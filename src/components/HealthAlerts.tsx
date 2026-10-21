@@ -7,12 +7,14 @@ interface HealthAlertsProps {
   stats: OverallStats;
   selectedStatusFilter: HealthStatus | null;
   onSelectStatusFilter: (status: HealthStatus | null) => void;
+  onOpenRiskCenter?: () => void;
 }
 
 export const HealthAlerts: React.FC<HealthAlertsProps> = ({
   stats,
   selectedStatusFilter,
   onSelectStatusFilter,
+  onOpenRiskCenter,
 }) => {
   return (
     <div className="mb-6">
@@ -26,15 +28,28 @@ export const HealthAlerts: React.FC<HealthAlertsProps> = ({
           </h2>
         </div>
 
-        {selectedStatusFilter && (
-          <button
-            onClick={() => onSelectStatusFilter(null)}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
-          >
-            <span>סינון פעיל: {selectedStatusFilter === 'over' ? 'חריגות בלבד' : selectedStatusFilter === 'warning' ? 'אזהרות בלבד' : 'תקינים בלבד'}</span>
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onOpenRiskCenter && (
+            <button
+              type="button"
+              onClick={onOpenRiskCenter}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1 rounded-xl transition-all shadow-2xs cursor-pointer"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-rose-600 animate-pulse" />
+              <span>מרכז סיכונים ואנומליות</span>
+            </button>
+          )}
+
+          {selectedStatusFilter && (
+            <button
+              onClick={() => onSelectStatusFilter(null)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-full transition-colors cursor-pointer"
+            >
+              <span>סינון פעיל: {selectedStatusFilter === 'over' ? 'חריגות בלבד' : selectedStatusFilter === 'warning' ? 'אזהרות בלבד' : 'תקינים בלבד'}</span>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 3 Traffic Light Cards Grid */}

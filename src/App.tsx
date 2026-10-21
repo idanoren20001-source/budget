@@ -17,6 +17,8 @@ import { SmartAssistantWorkspace } from './components/SmartAssistantWorkspace';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { ExecutiveReportModal } from './components/ExecutiveReportModal';
 import { BudgetExcelImportModal } from './components/BudgetExcelImportModal';
+import { RiskCenterModal } from './components/RiskCenterModal';
+import { ErpExportModal } from './components/ErpExportModal';
 import { LoginScreen } from './components/LoginScreen';
 import { SiteSelectionScreen } from './components/SiteSelectionScreen';
 import confetti from 'canvas-confetti';
@@ -120,6 +122,8 @@ export function App() {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isExcelImportOpen, setIsExcelImportOpen] = useState(false);
   const [isBudgetExcelImportOpen, setIsBudgetExcelImportOpen] = useState(false);
+  const [isRiskCenterOpen, setIsRiskCenterOpen] = useState(false);
+  const [isErpExportOpen, setIsErpExportOpen] = useState(false);
   const [isExecutiveReportOpen, setIsExecutiveReportOpen] = useState(false);
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<BudgetItemCalculated | null>(null);
 
@@ -182,6 +186,8 @@ export function App() {
         setIsBackupModalOpen(false);
         setIsExcelImportOpen(false);
         setIsBudgetExcelImportOpen(false);
+        setIsRiskCenterOpen(false);
+        setIsErpExportOpen(false);
         setSelectedDrawerItem(null);
         setIsChatOpen(false);
       }
@@ -217,6 +223,16 @@ export function App() {
     if (!selectedDrawerItem) return null;
     return calculatedItems.find((i) => i.id === selectedDrawerItem.id) || null;
   }, [selectedDrawerItem, calculatedItems]);
+
+  // Live active risk alerts count
+  const riskAlertsCount = useMemo(() => {
+    const overCount = calculatedItems.filter((i) => i.status === 'over').length;
+    let anomalyCount = 0;
+    expenses.forEach((e) => {
+      if (!e.po_number && !e.pd_number) anomalyCount++;
+    });
+    return overCount + anomalyCount;
+  }, [calculatedItems, expenses]);
 
   // --- Actions with Full Audit Logging ---
 
@@ -431,6 +447,17 @@ export function App() {
     [budgetItems, currentSite]
   );
 
+  // Quick adjust budget for an item (e.g. from Risk Center)
+  const handleQuickAdjustBudget = useCallback(
+    (itemId: string, delta: number) => {
+      const item = budgetItems.find((i) => i.id === itemId);
+      if (!item) return;
+      const newMonthly = Math.max(0, item.monthly_budget + delta);
+      handleUpdateMonthlyBudget(itemId, newMonthly);
+    },
+    [budgetItems, handleUpdateMonthlyBudget]
+  );
+
   // Direct manual override of Actual Spend (editing the actual spend cell directly)
   const handleUpdateActualSpendOverride = useCallback(
     (itemId: string, newActual: number | null) => {
@@ -594,6 +621,9 @@ export function App() {
         onOpenExcelImport={() => setIsExcelImportOpen(true)}
         onOpenBudgetImport={() => setIsBudgetExcelImportOpen(true)}
         onOpenExecutiveReport={() => setIsExecutiveReportOpen(true)}
+        onOpenRiskCenter={() => setIsRiskCenterOpen(true)}
+        riskAlertsCount={riskAlertsCount}
+        onOpenErpExport={() => setIsErpExportOpen(true)}
         onToggleChat={() => setActiveTab(activeTab === 'chat' ? 'dashboard' : 'chat')}
         isChatOpen={activeTab === 'chat'}
         activeTab={activeTab}
@@ -652,13 +682,19 @@ export function App() {
               stats={stats}
               selectedStatusFilter={statusFilter}
               onSelectStatusFilter={setStatusFilter}
+              onOpenRiskCenter={() => setIsRiskCenterOpen(true)}
             />
 
             {/* Overall Financial KPI Cards */}
             <KpiCards stats={stats} />
 
-            {/* Interactive Visualizations (Double Bar Chart + Donut Chart) */}
-            <ChartsSection groups={groupSummaries} />
+            {/* Interactive Visualizations (Double Bar Chart + Donut Chart + Quarterly Plan vs Actual) */}
+            <ChartsSection
+              groups={groupSummaries}
+              items={calculatedItems}
+              expenses={expenses}
+              currentYear={filter.year}
+            />
 
             {/* Detailed Budget & Actual Table with Inline Edit & Row Click Drill-Down */}
             <BudgetTable
@@ -835,6 +871,26 @@ export function App() {
         onClose={() => setIsBudgetExcelImportOpen(false)}
         activeSite={currentSite}
         onImportBudget={handleImportBudget}
+      />
+
+      {/* 9. Risk & Anomaly Center Modal */}
+      <RiskCenterModal
+        isOpen={isRiskCenterOpen}
+        onClose={() => setIsRiskCenterOpen(false)}
+        items={calculatedItems}
+        expenses={expenses}
+        onQuickAdjustBudget={handleQuickAdjustBudget}
+        onSelectItem={handleSelectItem}
+      />
+
+      {/* 10. ERP / Accounting Export Modal */}
+      <ErpExportModal
+        isOpen={isErpExportOpen}
+        onClose={() => setIsErpExportOpen(false)}
+        activeSite={currentSite}
+        budgetItems={calculatedItems}
+        expenses={expenses}
+        periodLabel={periodLabel}
       />
 
     </div>

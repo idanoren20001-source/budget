@@ -16,6 +16,8 @@ import {
   Building2,
   Boxes,
   LogOut,
+  BookOpen,
+  ShieldAlert,
 } from 'lucide-react';
 import { AppTab, SiteId } from '../types';
 import { SITES_METADATA } from '../data/initialData';
@@ -31,6 +33,9 @@ interface HeaderProps {
   onOpenExcelImport?: () => void;
   onOpenBudgetImport?: () => void;
   onOpenExecutiveReport?: () => void;
+  onOpenRiskCenter?: () => void;
+  riskAlertsCount?: number;
+  onOpenErpExport?: () => void;
   onToggleChat?: () => void;
   isChatOpen?: boolean;
   activeTab: AppTab;
@@ -54,6 +59,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExcelImport,
   onOpenBudgetImport,
   onOpenExecutiveReport,
+  onOpenRiskCenter,
+  riskAlertsCount = 0,
+  onOpenErpExport,
   onToggleChat,
   isChatOpen,
   activeTab,
@@ -238,6 +246,43 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
+            {/* Risk & Anomaly Center Trigger */}
+            {onOpenRiskCenter && (
+              <button
+                onClick={onOpenRiskCenter}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-2xs cursor-pointer ${
+                  riskAlertsCount > 0
+                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 ring-2 ring-rose-500/20'
+                    : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'
+                }`}
+                title="מרכז סיכונים, חריגות תקציב ואנומליות"
+              >
+                <ShieldAlert
+                  className={`w-3.5 h-3.5 ${
+                    riskAlertsCount > 0 ? 'text-rose-600 animate-pulse' : 'text-slate-500'
+                  }`}
+                />
+                <span className="hidden sm:inline">מרכז סיכונים</span>
+                {riskAlertsCount > 0 && (
+                  <span className="bg-rose-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
+                    {riskAlertsCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* ERP / SAP Accounting Export Modal Trigger */}
+            {onOpenErpExport && (
+              <button
+                onClick={onOpenErpExport}
+                className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 px-3 py-2 rounded-xl font-bold text-xs transition-all shadow-2xs cursor-pointer"
+                title="ייצוא פקודות יומן ונתונים למערכות ERP / SAP"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-blue-600" />
+                <span className="hidden sm:inline">ייצוא ל-ERP</span>
+              </button>
+            )}
+
             {/* Budget & FI Manager */}
             <button
               onClick={onOpenBudgetManager}
@@ -296,6 +341,18 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>דוח תקציב מול ביצוע</span>
                       <span className="text-[10px] text-slate-400">ריכוז סעיפים</span>
                     </button>
+                    {onOpenErpExport && (
+                      <button
+                        onClick={() => {
+                          onOpenErpExport();
+                          setExportMenuOpen(false);
+                        }}
+                        className="w-full text-right px-4 py-2 text-xs text-blue-700 hover:bg-blue-50 hover:text-blue-900 flex items-center justify-between border-t border-slate-100 font-bold"
+                      >
+                        <span>ייצוא פקודות יומן ו-ERP</span>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded">SAP</span>
+                      </button>
+                    )}
                   </div>
                 </>
               )}
