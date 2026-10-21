@@ -51,9 +51,13 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between py-3.5 gap-3">
           
           {/* Logo & System Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <span className="text-xl font-black">₪</span>
+          <div className="flex items-center gap-3.5">
+            <div className="h-11 px-2.5 py-1 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="IDE Technologies"
+                className="h-8 w-auto object-contain"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -66,7 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                ניהול, בקרה ומעקב תקציבי שוטף מול ביצוע בפועל לפי קודי FI
+                IDE Technologies — ניהול, בקרה ומעקב תקציבי שוטף מול ביצוע בפועל לפי קודי FI
               </p>
             </div>
           </div>

@@ -437,15 +437,18 @@ export function App() {
         {/* Printable Header */}
         <div className="hidden print:block mb-6 pb-4 border-b border-slate-300">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold">דוח בקרת תקציב ומשאבים ארגוניים</h1>
-              <p className="text-sm text-slate-600">
-                תקופת דוח: <strong>{periodLabel}</strong> | הופק בתאריך:{' '}
-                {new Date().toLocaleDateString('he-IL')}
-              </p>
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="IDE Technologies" className="h-10 w-auto object-contain" />
+              <div>
+                <h1 className="text-xl font-bold">דוח בקרת תקציב ומשאבים ארגוניים</h1>
+                <p className="text-sm text-slate-600">
+                  IDE Technologies | תקופת דוח: <strong>{periodLabel}</strong> | הופק בתאריך:{' '}
+                  {new Date().toLocaleDateString('he-IL')}
+                </p>
+              </div>
             </div>
             <div className="text-right">
-              <span className="text-sm font-bold">מערכת בקרת תקציב ארגונית</span>
+              <span className="text-sm font-bold text-slate-700">IDE Technologies</span>
             </div>
           </div>
         </div>
