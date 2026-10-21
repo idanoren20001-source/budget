@@ -18,6 +18,12 @@ import {
   AlertTriangle,
   ExternalLink,
   ShieldAlert,
+  User,
+  Hash,
+  Tag,
+  Briefcase,
+  UploadCloud,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Expense, BudgetItem, AnomalyAlert } from '../types';
 import { formatCurrency, detectAnomalies } from '../utils/budgetUtils';
@@ -30,7 +36,9 @@ interface ExpensesLogTableProps {
   onUpdateExpense: (expense: Expense) => void;
   onBulkDeleteExpenses?: (ids: string[]) => void;
   onBulkUpdateExpenses?: (ids: string[], updates: Partial<Expense>) => void;
+  onClearAllExpenses?: () => void;
   onOpenNewExpense: () => void;
+  onOpenExcelImport?: () => void;
   periodLabel: string;
 }
 
@@ -41,7 +49,9 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
   onUpdateExpense,
   onBulkDeleteExpenses,
   onBulkUpdateExpenses,
+  onClearAllExpenses,
   onOpenNewExpense,
+  onOpenExcelImport,
   periodLabel,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,6 +81,12 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
   const [bulkApplyDate, setBulkApplyDate] = useState(false);
   const [bulkVendor, setBulkVendor] = useState('');
   const [bulkApplyVendor, setBulkApplyVendor] = useState(false);
+  const [bulkCompany, setBulkCompany] = useState('');
+  const [bulkApplyCompany, setBulkApplyCompany] = useState(false);
+  const [bulkUser, setBulkUser] = useState('');
+  const [bulkApplyUser, setBulkApplyUser] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState('');
+  const [bulkApplyStatus, setBulkApplyStatus] = useState(false);
   const [bulkItemId, setBulkItemId] = useState('');
   const [bulkApplyItem, setBulkApplyItem] = useState(false);
   const [bulkNotes, setBulkNotes] = useState('');
@@ -117,15 +133,24 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
         return (
           exp.fi_code.toLowerCase().includes(q) ||
           exp.vendor.toLowerCase().includes(q) ||
+          (exp.vendor_number && exp.vendor_number.toLowerCase().includes(q)) ||
+          (exp.company && exp.company.toLowerCase().includes(q)) ||
+          (exp.details && exp.details.toLowerCase().includes(q)) ||
+          (exp.po_number && exp.po_number.toLowerCase().includes(q)) ||
+          (exp.pd_number && exp.pd_number.toLowerCase().includes(q)) ||
+          (exp.user_name && exp.user_name.toLowerCase().includes(q)) ||
+          (exp.status && exp.status.toLowerCase().includes(q)) ||
+          (exp.date_approved && exp.date_approved.toLowerCase().includes(q)) ||
           exp.ref_number.toLowerCase().includes(q) ||
           itemName.toLowerCase().includes(q) ||
-          (exp.notes && exp.notes.toLowerCase().includes(q))
+          (exp.notes && exp.notes.toLowerCase().includes(q)) ||
+          (exp.extra_notes && exp.extra_notes.toLowerCase().includes(q))
         );
       }
 
       return true;
     });
-  }, [expenses, itemsMap, selectedGroup, searchTerm]);
+  }, [expenses, itemsMap, selectedGroup, searchTerm, showAnomaliesOnly, anomaliesMap]);
 
   const totalFilteredAmount = filteredExpenses.reduce((s, e) => s + e.amount, 0);
 
@@ -158,9 +183,9 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
 
     if (
       confirm(
-        `האם אתה בטוח שברצונך למחוק ${count} הוצאות בסך כולל של ${formatCurrency(
+        `האם אתה בטוח שברצונך למחוק ${count} הוצאות שנבחרו (בסך כולל של ${formatCurrency(
           selectedSum
-        )}? פעולה זו תימחק מהמערכת ותתועד ביומן השינויים.`
+        )})?`
       )
     ) {
       if (onBulkDeleteExpenses) {
@@ -172,44 +197,52 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
     }
   };
 
-  // Bulk Edit Submission
+  // Bulk Edit Submit
   const handleSaveBulkEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedIds.length === 0) return;
 
     const updates: Partial<Expense> = {};
     if (bulkApplyDate && bulkDate) updates.date = bulkDate;
-    if (bulkApplyVendor && bulkVendor.trim()) updates.vendor = bulkVendor.trim();
-    if (bulkApplyItem && bulkItemId) {
-      const selectedBi = budgetItems.find((b) => b.id === bulkItemId);
-      if (selectedBi) {
-        updates.budget_item_id = selectedBi.id;
-        updates.fi_code = selectedBi.fi_code;
-      }
-    }
+    if (bulkApplyVendor && bulkVendor) updates.vendor = bulkVendor;
+    if (bulkApplyCompany && bulkCompany) updates.company = bulkCompany;
+    if (bulkApplyUser && bulkUser) updates.user_name = bulkUser;
+    if (bulkApplyStatus && bulkStatus) updates.status = bulkStatus;
     if (bulkApplyNotes) updates.notes = bulkNotes;
 
-    if (Object.keys(updates).length > 0) {
-      if (onBulkUpdateExpenses) {
-        onBulkUpdateExpenses(selectedIds, updates);
-      } else {
-        selectedIds.forEach((id) => {
-          const exp = expenses.find((e) => e.id === id);
-          if (exp) onUpdateExpense({ ...exp, ...updates });
-        });
+    if (bulkApplyItem && bulkItemId) {
+      const item = budgetItems.find((b) => b.id === bulkItemId);
+      if (item) {
+        updates.budget_item_id = item.id;
+        updates.fi_code = item.fi_code;
       }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      alert('לא נבחרו שדות לעדכון.');
+      return;
+    }
+
+    if (onBulkUpdateExpenses) {
+      onBulkUpdateExpenses(selectedIds, updates);
+    } else {
+      expenses
+        .filter((exp) => selectedIds.includes(exp.id))
+        .forEach((exp) => {
+          onUpdateExpense({ ...exp, ...updates });
+        });
     }
 
     setIsBulkEditOpen(false);
     setSelectedIds([]);
   };
 
+  // Single Edit Save
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingExpense) {
-      onUpdateExpense(editingExpense);
-      setEditingExpense(null);
-    }
+    if (!editingExpense) return;
+    onUpdateExpense(editingExpense);
+    setEditingExpense(null);
   };
 
   const selectedExpensesSum = useMemo(() => {
@@ -219,14 +252,14 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
   }, [expenses, selectedIds]);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden mb-8">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden mb-8 font-['Assistant',sans-serif]">
       
-      {/* Top Banner & Filter Controls */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center md:justify-between gap-3.5">
+      {/* Header & Filter Bar */}
+      <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-slate-900">
-              יומן הוצאות ותנועות כספיות ({periodLabel})
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+              יומן הוצאות וחשבוניות — {periodLabel}
             </h3>
             <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-2.5 py-0.5 rounded-full border border-indigo-200/60">
               {filteredExpenses.length} תנועות
@@ -240,15 +273,15 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
           </p>
         </div>
 
-        {/* Search, Group Filter & New Expense */}
-        <div className="flex flex-col sm:flex-row items-center gap-2.5">
+        {/* Search, Group Filter & Actions */}
+        <div className="flex flex-wrap items-center gap-2.5">
           
-          {/* Search box */}
-          <div className="relative w-full sm:w-60">
+          {/* Search box across all 13 fields */}
+          <div className="relative w-full sm:w-64">
             <Search className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
             <input
               type="text"
-              placeholder="חיפוש ספק, אסמכתא, קוד FI..."
+              placeholder="חיפוש ספק, PO, PD, משתמש, סכום, קוד FI..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white border border-slate-200 rounded-xl pr-9 pl-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -267,7 +300,7 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
           <select
             value={selectedGroup}
             onChange={(e) => setSelectedGroup(e.target.value)}
-            className="w-full sm:w-auto bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-hidden cursor-pointer"
+            className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 focus:outline-hidden cursor-pointer"
           >
             <option value="all">כל הקבוצות</option>
             {INITIAL_GROUPS.map((g) => (
@@ -289,7 +322,7 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
               title="סנן והצג רק הוצאות עם חשד לכפילות או קפיצה חריגה בסכום"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-              <span>התראות ובקרה ({totalAnomaliesCount})</span>
+              <span>התראות ({totalAnomaliesCount})</span>
             </button>
           )}
 
@@ -301,6 +334,18 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
             <PlusCircle className="w-3.5 h-3.5" />
             <span>הוצאה חדשה</span>
           </button>
+
+          {/* Clear all expenses button */}
+          {expenses.length > 0 && onClearAllExpenses && (
+            <button
+              onClick={onClearAllExpenses}
+              className="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+              title="מחק ורוקן את כל ההוצאות הקיימות במערכת"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>איפוס יומן</span>
+            </button>
+          )}
 
         </div>
       </div>
@@ -327,6 +372,12 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                 setBulkApplyDate(false);
                 setBulkVendor('');
                 setBulkApplyVendor(false);
+                setBulkCompany('');
+                setBulkApplyCompany(false);
+                setBulkUser('');
+                setBulkApplyUser(false);
+                setBulkStatus('');
+                setBulkApplyStatus(false);
                 setBulkItemId('');
                 setBulkApplyItem(false);
                 setBulkNotes('');
@@ -361,8 +412,8 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
       <div className="overflow-x-auto">
         <table className="w-full text-right text-xs">
           <thead>
-            <tr className="bg-slate-100/75 border-b border-slate-200 text-slate-600 font-bold">
-              {/* Checkbox column */}
+            <tr className="bg-slate-100/75 border-b border-slate-200 text-slate-600 font-bold whitespace-nowrap">
+              {/* Checkbox */}
               <th className="py-3 px-3 w-10 text-center">
                 <input
                   type="checkbox"
@@ -372,22 +423,43 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                   title="בחר / בטל בחירת הכל"
                 />
               </th>
-              <th className="py-3 px-3.5">קוד FI</th>
-              <th className="py-3 px-3.5">שם הסעיף</th>
-              <th className="py-3 px-3.5">קבוצה ראשית</th>
-              <th className="py-3 px-3.5">תאריך</th>
-              <th className="py-3 px-3.5">ספק / בית עסק</th>
-              <th className="py-3 px-3.5">אסמכתא / חשבונית</th>
-              <th className="py-3 px-3.5 text-left">סכום בש"ח</th>
-              <th className="py-3 px-3.5">הערות</th>
-              <th className="py-3 px-3.5 text-center no-print">פעולות</th>
+              <th className="py-3 px-2.5">Date opened</th>
+              <th className="py-3 px-3">ספק (Vendor)</th>
+              <th className="py-3 px-2.5">מספר ספק</th>
+              <th className="py-3 px-2.5">חברה</th>
+              <th className="py-3 px-3">Details (פירוט)</th>
+              <th className="py-3 px-2.5 font-mono">PO</th>
+              <th className="py-3 px-2.5 font-mono">PD</th>
+              <th className="py-3 px-3 text-left">Cost (עלות)</th>
+              <th className="py-3 px-2.5">User</th>
+              <th className="py-3 px-2">Status</th>
+              <th className="py-3 px-2.5">Date approved</th>
+              <th className="py-3 px-3">סעיף FI משויך</th>
+              <th className="py-3 px-3 text-center no-print">פעולות</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-slate-100 whitespace-nowrap">
             {filteredExpenses.length === 0 ? (
               <tr>
-                <td colSpan={10} className="py-10 text-center text-slate-400">
-                  לא נרשמו הוצאות בתקופה זו (או שאין תוצאות התואמות את החיפוש).
+                <td colSpan={14} className="py-12 text-center text-slate-400">
+                  <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                    <FileSpreadsheet className="w-10 h-10 text-slate-300" />
+                    <p className="font-bold text-slate-600 text-sm">
+                      יומן ההוצאות ריק
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      לא נרשמו עדיין הוצאות. תוכל להעלות קובץ נתונים או לרשום הוצאה ראשונה.
+                    </p>
+                    {onOpenExcelImport && (
+                      <button
+                        onClick={onOpenExcelImport}
+                        className="mt-2 inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs cursor-pointer"
+                      >
+                        <UploadCloud className="w-4 h-4" />
+                        <span>ייבוא מקובץ אקסל / CSV עכשיו</span>
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -412,31 +484,31 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                       />
                     </td>
 
-                    {/* FI Code */}
-                    <td className="py-2.5 px-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
-                      <span className="bg-blue-50 border border-blue-200/80 text-blue-900 px-2 py-0.5 rounded-md">
-                        {exp.fi_code}
-                      </span>
-                    </td>
-
-                    {/* Item Name */}
-                    <td className="py-2.5 px-3.5 font-semibold text-slate-800 whitespace-nowrap">
-                      {item ? item.name : '—'}
-                    </td>
-
-                    {/* Group */}
-                    <td className="py-2.5 px-3.5 text-slate-500 whitespace-nowrap">
-                      {item ? item.group : '—'}
-                    </td>
-
-                    {/* Date */}
-                    <td className="py-2.5 px-3.5 font-mono text-slate-600 whitespace-nowrap">
+                    {/* Date opened */}
+                    <td className="py-2.5 px-2.5 font-mono text-slate-600">
                       {exp.date}
                     </td>
 
                     {/* Vendor */}
-                    <td className="py-2.5 px-3.5 whitespace-nowrap">
-                      <div className="font-medium text-slate-800">{exp.vendor}</div>
+                    <td className="py-2.5 px-3">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                        <span>{exp.vendor}</span>
+                        {exp.attachment_data && (
+                          <button
+                            onClick={() =>
+                              setPreviewAttachment({
+                                name: exp.attachment_name || 'חשבונית',
+                                type: exp.attachment_type || 'image/png',
+                                data: exp.attachment_data!,
+                              })
+                            }
+                            className="text-blue-600 hover:text-blue-800 p-0.5 rounded cursor-pointer"
+                            title="צפה בצילום החשבונית המקורית"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                       {anomaliesMap.has(exp.id) && (
                         <div className="mt-0.5 space-y-0.5">
                           {anomaliesMap.get(exp.id)!.map((al) => (
@@ -457,31 +529,35 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                       )}
                     </td>
 
-                    {/* Reference / Invoice Number & Attachment */}
-                    <td className="py-2.5 px-3.5 whitespace-nowrap">
-                      <div className="font-mono text-slate-600">{exp.ref_number}</div>
-                      {exp.attachment_data && (
-                        <button
-                          onClick={() =>
-                            setPreviewAttachment({
-                              name: exp.attachment_name || 'חשבונית',
-                              type: exp.attachment_type || 'image/png',
-                              data: exp.attachment_data!,
-                            })
-                          }
-                          className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-1.5 py-0.2 rounded cursor-pointer transition-colors"
-                          title="לחץ לצפייה בצילום החשבונית המקורית"
-                        >
-                          <Paperclip className="w-2.5 h-2.5 text-blue-600" />
-                          <span className="truncate max-w-[100px]">
-                            {exp.attachment_name || 'צפה במסמך'}
-                          </span>
-                        </button>
-                      )}
+                    {/* Vendor Number */}
+                    <td className="py-2.5 px-2.5 font-mono text-slate-500">
+                      {exp.vendor_number || '—'}
                     </td>
 
-                    {/* Amount (Inline Editable) */}
-                    <td className="py-2.5 px-3.5 text-left font-black text-slate-900 whitespace-nowrap">
+                    {/* Company */}
+                    <td className="py-2.5 px-2.5 text-slate-600">
+                      <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[11px] font-medium">
+                        {exp.company || 'IDE'}
+                      </span>
+                    </td>
+
+                    {/* Details */}
+                    <td className="py-2.5 px-3 text-slate-600 max-w-[170px] truncate" title={exp.details || exp.notes}>
+                      {exp.details || exp.notes || '—'}
+                    </td>
+
+                    {/* PO */}
+                    <td className="py-2.5 px-2.5 font-mono font-bold text-blue-700">
+                      {exp.po_number || '—'}
+                    </td>
+
+                    {/* PD */}
+                    <td className="py-2.5 px-2.5 font-mono font-bold text-indigo-700">
+                      {exp.pd_number || '—'}
+                    </td>
+
+                    {/* Cost (Inline Editable) */}
+                    <td className="py-2.5 px-3 text-left font-black text-slate-900 font-mono">
                       {editingAmountId === exp.id ? (
                         <div className="inline-flex items-center gap-1">
                           <input
@@ -519,18 +595,46 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                       )}
                     </td>
 
-                    {/* Notes */}
-                    <td className="py-2.5 px-3.5 text-slate-500 max-w-xs truncate" title={exp.notes}>
-                      {exp.notes || '—'}
+                    {/* User */}
+                    <td className="py-2.5 px-2.5 text-slate-600">
+                      {exp.user_name || '—'}
                     </td>
 
-                    {/* Actions: Edit & Delete */}
-                    <td className="py-2.5 px-3.5 text-center whitespace-nowrap no-print">
+                    {/* Status */}
+                    <td className="py-2.5 px-2">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        exp.status?.toLowerCase().includes('pending')
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-emerald-100 text-emerald-800'
+                      }`}>
+                        {exp.status || 'אושר'}
+                      </span>
+                    </td>
+
+                    {/* Date approved */}
+                    <td className="py-2.5 px-2.5 font-mono text-slate-500 text-[11px]">
+                      {exp.date_approved || '—'}
+                    </td>
+
+                    {/* Matched FI Item */}
+                    <td className="py-2.5 px-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold bg-blue-50 border border-blue-200/80 text-blue-900 px-1.5 py-0.2 rounded text-[11px]">
+                          {exp.fi_code}
+                        </span>
+                        <span className="font-medium text-slate-700 max-w-[130px] truncate" title={item?.name}>
+                          {item ? item.name : '—'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap no-print">
                       <div className="inline-flex items-center gap-1">
                         <button
                           onClick={() => setEditingExpense(exp)}
                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="ערוך הוצאה"
+                          title="ערוך את כל פרטי החשבונית"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
@@ -547,6 +651,7 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                         </button>
                       </div>
                     </td>
+
                   </tr>
                 );
               })
@@ -561,17 +666,10 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-50 text-indigo-700 rounded-xl">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    עריכה מרוכזת של הוצאות
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    עדכון שדות משותפים עבור {selectedIds.length} הוצאות שסומנו
-                  </p>
-                </div>
+                <Edit2 className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  עריכה מרוכזת ({selectedIds.length} שורות נבחרו)
+                </h3>
               </div>
               <button
                 onClick={() => setIsBulkEditOpen(false)}
@@ -581,78 +679,98 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveBulkEdit} className="mt-4 space-y-4">
-              
-              {/* Change Date */}
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input
-                    type="checkbox"
-                    checked={bulkApplyDate}
-                    onChange={(e) => setBulkApplyDate(e.target.checked)}
-                    className="rounded text-indigo-600"
-                  />
-                  <span className="text-xs font-bold text-slate-800">
-                    עדכן תאריך לכל ההוצאות המסומנות
-                  </span>
-                </label>
-                {bulkApplyDate && (
-                  <input
-                    type="date"
-                    value={bulkDate}
-                    onChange={(e) => setBulkDate(e.target.value)}
-                    required={bulkApplyDate}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs"
-                  />
-                )}
-              </div>
+            <form onSubmit={handleSaveBulkEdit} className="mt-4 space-y-3.5 text-xs">
+              <p className="text-slate-500 text-xs">
+                סמן ב-✓ את השדות שברצונך לשנות לכל השורות שנבחרו:
+              </p>
 
-              {/* Change Vendor */}
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
+              {/* Vendor */}
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={bulkApplyVendor}
                     onChange={(e) => setBulkApplyVendor(e.target.checked)}
-                    className="rounded text-indigo-600"
+                    className="rounded border-slate-300 text-indigo-600"
                   />
-                  <span className="text-xs font-bold text-slate-800">
-                    עדכן שם ספק לכל ההוצאות המסומנות
-                  </span>
+                  <span>עדכן ספק</span>
                 </label>
                 {bulkApplyVendor && (
                   <input
                     type="text"
-                    placeholder="הזן שם ספק חדש..."
                     value={bulkVendor}
                     onChange={(e) => setBulkVendor(e.target.value)}
-                    required={bulkApplyVendor}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs"
+                    placeholder="שם ספק חדש..."
+                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs"
                   />
                 )}
               </div>
 
-              {/* Change FI Item */}
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
+              {/* Company */}
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkApplyCompany}
+                    onChange={(e) => setBulkApplyCompany(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600"
+                  />
+                  <span>עדכן חברה</span>
+                </label>
+                {bulkApplyCompany && (
+                  <input
+                    type="text"
+                    value={bulkCompany}
+                    onChange={(e) => setBulkCompany(e.target.value)}
+                    placeholder="IDE Technologies..."
+                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs"
+                  />
+                )}
+              </div>
+
+              {/* Status */}
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkApplyStatus}
+                    onChange={(e) => setBulkApplyStatus(e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600"
+                  />
+                  <span>עדכן סטטוס</span>
+                </label>
+                {bulkApplyStatus && (
+                  <select
+                    value={bulkStatus}
+                    onChange={(e) => setBulkStatus(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer font-bold"
+                  >
+                    <option value="Approved">Approved (אושר)</option>
+                    <option value="Pending">Pending (ממתין)</option>
+                    <option value="In Review">In Review (בבדיקה)</option>
+                    <option value="Paid">Paid (שולם)</option>
+                  </select>
+                )}
+              </div>
+
+              {/* FI Item */}
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={bulkApplyItem}
                     onChange={(e) => setBulkApplyItem(e.target.checked)}
-                    className="rounded text-indigo-600"
+                    className="rounded border-slate-300 text-indigo-600"
                   />
-                  <span className="text-xs font-bold text-slate-800">
-                    העבר את כל ההוצאות לסעיף תקציב / FI אחר
-                  </span>
+                  <span>העבר לסעיף תקציב ו-FI אחר</span>
                 </label>
                 {bulkApplyItem && (
                   <select
                     value={bulkItemId}
                     onChange={(e) => setBulkItemId(e.target.value)}
-                    required={bulkApplyItem}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs cursor-pointer"
+                    className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold"
                   >
-                    <option value="">בחר סעיף תקציבי חדש...</option>
+                    <option value="">בחר סעיף תקציב...</option>
                     {budgetItems.map((b) => (
                       <option key={b.id} value={b.id}>
                         {b.fi_code} - {b.name} ({b.group})
@@ -662,49 +780,19 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
                 )}
               </div>
 
-              {/* Update Notes */}
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input
-                    type="checkbox"
-                    checked={bulkApplyNotes}
-                    onChange={(e) => setBulkApplyNotes(e.target.checked)}
-                    className="rounded text-indigo-600"
-                  />
-                  <span className="text-xs font-bold text-slate-800">
-                    הוסף / עדכן הערה לכל ההוצאות
-                  </span>
-                </label>
-                {bulkApplyNotes && (
-                  <textarea
-                    rows={2}
-                    placeholder="הזן הערה מרוכזת..."
-                    value={bulkNotes}
-                    onChange={(e) => setBulkNotes(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs resize-none"
-                  />
-                )}
-              </div>
-
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsBulkEditOpen(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-xl"
+                  className="px-3 py-1.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold"
                 >
                   ביטול
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    !bulkApplyDate &&
-                    !bulkApplyVendor &&
-                    !bulkApplyItem &&
-                    !bulkApplyNotes
-                  }
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white text-xs font-bold rounded-xl shadow-xs transition-colors"
+                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs transition-colors"
                 >
-                  החל שינויים על {selectedIds.length} הוצאות
+                  החל על {selectedIds.length} שורות
                 </button>
               </div>
             </form>
@@ -712,14 +800,17 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
         </div>
       )}
 
-      {/* Single Edit Expense Modal Dialog */}
+      {/* Single Edit Expense Modal Dialog (All 13 fields) */}
       {editingExpense && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="text-base font-bold text-slate-900">
-                עריכת הוצאה: {editingExpense.fi_code}
-              </h3>
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-blue-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  עריכת פרטי חשבונית: {editingExpense.vendor} ({editingExpense.fi_code})
+                </h3>
+              </div>
               <button
                 onClick={() => setEditingExpense(null)}
                 className="p-1 text-slate-400 hover:text-slate-600"
@@ -728,90 +819,240 @@ export const ExpensesLogTable: React.FC<ExpensesLogTableProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="mt-4 space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  תאריך
-                </label>
-                <input
-                  type="date"
-                  value={editingExpense.date}
-                  onChange={(e) =>
-                    setEditingExpense({ ...editingExpense, date: e.target.value })
-                  }
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs"
-                />
+            <form onSubmit={handleSaveEdit} className="mt-3.5 space-y-3 overflow-y-auto flex-1 pr-1 text-xs">
+              
+              {/* Row 1: Date opened | Date approved | Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Date opened
+                  </label>
+                  <input
+                    type="date"
+                    value={editingExpense.date}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, date: e.target.value })
+                    }
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Date approved
+                  </label>
+                  <input
+                    type="date"
+                    value={editingExpense.date_approved || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, date_approved: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={editingExpense.status || 'Approved'}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, status: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                  >
+                    <option value="Approved">Approved</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Review">In Review</option>
+                    <option value="Paid">Paid</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  סכום (₪)
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={editingExpense.amount}
-                  onChange={(e) =>
-                    setEditingExpense({
-                      ...editingExpense,
-                      amount: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold"
-                />
+              {/* Row 2: Vendor | מספר ספק | חברה */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Vendor
+                  </label>
+                  <input
+                    type="text"
+                    value={editingExpense.vendor}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, vendor: e.target.value })
+                    }
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    מספר ספק
+                  </label>
+                  <input
+                    type="text"
+                    value={editingExpense.vendor_number || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, vendor_number: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    חברה
+                  </label>
+                  <input
+                    type="text"
+                    value={editingExpense.company || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, company: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ספק
-                </label>
-                <input
-                  type="text"
-                  value={editingExpense.vendor}
-                  onChange={(e) =>
-                    setEditingExpense({ ...editingExpense, vendor: e.target.value })
-                  }
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs"
-                />
+              {/* Row 3: Cost | PO | PD */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Cost (₪)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={editingExpense.amount}
+                    onChange={(e) =>
+                      setEditingExpense({
+                        ...editingExpense,
+                        amount: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-black"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    PO
+                  </label>
+                  <input
+                    type="text"
+                    value={editingExpense.po_number || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, po_number: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-blue-700"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    PD
+                  </label>
+                  <input
+                    type="text"
+                    value={editingExpense.pd_number || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, pd_number: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold text-indigo-700"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  מספר אסמכתא / חשבונית
-                </label>
-                <input
-                  type="text"
-                  value={editingExpense.ref_number}
-                  onChange={(e) =>
-                    setEditingExpense({ ...editingExpense, ref_number: e.target.value })
-                  }
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-mono"
-                />
+              {/* Row 4: Details | User */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Details
+                  </label>
+                  <input
+                    type="text"
+                    value={editingExpense.details || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, details: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    User
+                  </label>
+                  <input
+                    type="text"
+                    value={editingExpense.user_name || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, user_name: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs"
+                  />
+                </div>
               </div>
 
+              {/* FI Item change */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  הערות
+                <label className="block font-bold text-slate-700 mb-1">
+                  סעיף תקציב ו-FI
                 </label>
-                <textarea
-                  rows={2}
-                  value={editingExpense.notes || ''}
-                  onChange={(e) =>
-                    setEditingExpense({ ...editingExpense, notes: e.target.value })
-                  }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs resize-none"
-                />
+                <select
+                  value={editingExpense.budget_item_id}
+                  onChange={(e) => {
+                    const found = budgetItems.find((b) => b.id === e.target.value);
+                    if (found) {
+                      setEditingExpense({
+                        ...editingExpense,
+                        budget_item_id: found.id,
+                        fi_code: found.fi_code,
+                      });
+                    }
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold"
+                >
+                  {budgetItems.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.fi_code} - {b.name} ({b.group})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Notes & Extra notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    הערות
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editingExpense.notes || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, notes: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    עוד הערות...
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editingExpense.extra_notes || ''}
+                    onChange={(e) =>
+                      setEditingExpense({ ...editingExpense, extra_notes: e.target.value })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs resize-none"
+                  />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setEditingExpense(null)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg font-bold"
                 >
                   ביטול
                 </button>

@@ -6,18 +6,27 @@ export function exportExpensesToExcel(
   budgetItems: Record<string, { name: string; group: string }>,
   periodLabel: string
 ) {
-  // Map rows: FI code is explicitly in the first column as required by PRD!
+  // Map rows matching the exact enterprise headers requested:
+  // Date opened | Vendor | מספר ספק | Cost | חברה | Details | PO | PD | הערות | עוד הערות... | User | Status | Date approved
   const rows = expenses.map((exp) => {
     const item = budgetItems[exp.budget_item_id] || { name: 'סעיף כללי', group: 'אחר' };
     return {
+      'Date opened': exp.date,
+      'Vendor': exp.vendor,
+      'מספר ספק': exp.vendor_number || '',
+      'Cost': exp.amount,
+      'חברה': exp.company || 'IDE Technologies',
+      'Details': exp.details || '',
+      'PO': exp.po_number || '',
+      'PD': exp.pd_number || '',
+      'הערות': exp.notes || '',
+      'עוד הערות...': exp.extra_notes || '',
+      'User': exp.user_name || '',
+      'Status': exp.status || 'Approved',
+      'Date approved': exp.date_approved || '',
       'קוד FI': exp.fi_code,
       'שם הסעיף': item.name,
       'קבוצה': item.group,
-      'תאריך': exp.date,
-      'ספק / בית עסק': exp.vendor,
-      'אסמכתא / חשבונית': exp.ref_number,
-      'סכום בש"ח': exp.amount,
-      'הערות': exp.notes || '',
     };
   });
 
@@ -25,14 +34,22 @@ export function exportExpensesToExcel(
 
   // Set column widths
   worksheet['!cols'] = [
+    { wch: 14 }, // Date opened
+    { wch: 25 }, // Vendor
+    { wch: 14 }, // מספר ספק
+    { wch: 14 }, // Cost
+    { wch: 18 }, // חברה
+    { wch: 30 }, // Details
+    { wch: 14 }, // PO
+    { wch: 14 }, // PD
+    { wch: 25 }, // הערות
+    { wch: 25 }, // עוד הערות...
+    { wch: 16 }, // User
+    { wch: 14 }, // Status
+    { wch: 14 }, // Date approved
     { wch: 12 }, // קוד FI
-    { wch: 32 }, // שם הסעיף
-    { wch: 25 }, // קבוצה
-    { wch: 14 }, // תאריך
-    { wch: 25 }, // ספק
-    { wch: 18 }, // אסמכתא
-    { wch: 15 }, // סכום
-    { wch: 40 }, // הערות
+    { wch: 28 }, // שם הסעיף
+    { wch: 22 }, // קבוצה
   ];
 
   const workbook = XLSX.utils.book_new();

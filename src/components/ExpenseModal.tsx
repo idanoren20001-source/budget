@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Search, Check, Calendar, CreditCard, Building2, FileText, MessageSquare, Paperclip, Upload, Trash2 } from 'lucide-react';
+import {
+  X,
+  Search,
+  Check,
+  Calendar,
+  CreditCard,
+  Building2,
+  FileText,
+  MessageSquare,
+  Paperclip,
+  Upload,
+  Trash2,
+  Hash,
+  User,
+  CheckCircle2,
+  Tag,
+  Briefcase,
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { BudgetItem, Expense } from '../types';
 
@@ -18,13 +35,25 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   onSaveExpense,
   preselectedItemId,
 }) => {
+  // Core FI item
   const [selectedItemId, setSelectedItemId] = useState<string>('');
-  const [date, setDate] = useState<string>('');
-  const [amount, setAmount] = useState<string>('');
+
+  // 13 Required Fields:
+  // Date opened | Vendor | מספר ספק | Cost | חברה | Details | PO | PD | הערות | עוד הערות... | User | Status | Date approved
+  const [dateOpened, setDateOpened] = useState<string>('');
   const [vendor, setVendor] = useState<string>('');
-  const [refNumber, setRefNumber] = useState<string>('');
+  const [vendorNumber, setVendorNumber] = useState<string>('');
+  const [cost, setCost] = useState<string>('');
+  const [company, setCompany] = useState<string>('IDE Technologies');
+  const [details, setDetails] = useState<string>('');
+  const [poNumber, setPoNumber] = useState<string>('');
+  const [pdNumber, setPdNumber] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  
+  const [extraNotes, setExtraNotes] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
+  const [status, setStatus] = useState<string>('Approved');
+  const [dateApproved, setDateApproved] = useState<string>('');
+
   // File Attachment State
   const [attachmentName, setAttachmentName] = useState<string>('');
   const [attachmentType, setAttachmentType] = useState<string>('');
@@ -41,11 +70,19 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const today = new Date().toISOString().slice(0, 10);
-      setDate(today);
-      setAmount('');
+      setDateOpened(today);
+      setDateApproved(today);
       setVendor('');
-      setRefNumber('');
+      setVendorNumber('');
+      setCost('');
+      setCompany('IDE Technologies');
+      setDetails('');
+      setPoNumber('');
+      setPdNumber('');
       setNotes('');
+      setExtraNotes('');
+      setUserName('');
+      setStatus('Approved');
       setAttachmentName('');
       setAttachmentType('');
       setAttachmentData('');
@@ -82,7 +119,6 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
     const matchCode = item.fi_code.toLowerCase().includes(q);
     const matchName = item.name.toLowerCase().includes(q);
     const matchGroup = item.group.toLowerCase().includes(q);
-    // Support typing numbers like "707" to match "FI-707"
     const numberOnlyCode = item.fi_code.replace(/[^0-9]/g, '');
     const matchNumber = numberOnlyCode.includes(q.replace(/[^0-9]/g, ''));
     return matchCode || matchName || matchGroup || (q.match(/^[0-9]+$/) && matchNumber);
@@ -92,43 +128,49 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
     e.preventDefault();
 
     if (!selectedItemId) {
-      alert('אנא בחר סעיף תקציבי');
+      alert('אנא בחר סעיף תקציבי וקוד FI');
       return;
     }
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseFloat(cost);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      alert('אנא הזן סכום תקין בש"ח');
+      alert('אנא הזן סכום / Cost תקין');
       return;
     }
     if (!vendor.trim()) {
-      alert('אנא הזן שם ספק / בית עסק');
-      return;
-    }
-    if (!refNumber.trim()) {
-      alert('אנא הזן מספר אסמכתא או חשבונית');
+      alert('אנא הזן שם ספק / Vendor');
       return;
     }
 
     const item = budgetItems.find((i) => i.id === selectedItemId);
     const fi_code = item ? item.fi_code : '';
+    const ref_number = poNumber.trim() || pdNumber.trim() || `INV-${Date.now().toString().slice(-5)}`;
 
     onSaveExpense({
       budget_item_id: selectedItemId,
       fi_code,
-      date,
+      date: dateOpened || new Date().toISOString().slice(0, 10),
       amount: parsedAmount,
       vendor: vendor.trim(),
-      ref_number: refNumber.trim(),
-      notes: notes.trim(),
+      vendor_number: vendorNumber.trim() || undefined,
+      company: company.trim() || undefined,
+      details: details.trim() || undefined,
+      po_number: poNumber.trim() || undefined,
+      pd_number: pdNumber.trim() || undefined,
+      ref_number,
+      notes: notes.trim() || undefined,
+      extra_notes: extraNotes.trim() || undefined,
+      user_name: userName.trim() || undefined,
+      status: status.trim() || undefined,
+      date_approved: dateApproved.trim() || undefined,
       attachment_name: attachmentName || undefined,
       attachment_type: attachmentType || undefined,
       attachment_data: attachmentData || undefined,
     });
 
-    // Delightful celebration for fast data entry
+    // Delightful confetti celebration
     try {
       confetti({
-        particleCount: 40,
+        particleCount: 35,
         spread: 60,
         origin: { y: 0.7 },
         colors: ['#2563eb', '#10b981', '#f59e0b'],
@@ -141,34 +183,34 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-['Assistant',sans-serif]">
+      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-900">
-                רישום הוצאה חדשה (Smart FI Entry)
+              <h3 className="text-base font-bold text-slate-900">
+                רישום והעלאת חשבונית חדשה
               </h3>
-              <p className="text-xs text-slate-400">
-                הזנה מהירה בפחות מ-10 שניות — מסתנכרנת מיידית במערכת
+              <p className="text-xs text-slate-500">
+                טופס מובנה הכולל את כל שדות החשבונית (ספק, PO, PD, עלות, חברה, אישורים)
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-3.5 space-y-3.5 overflow-y-auto flex-1 pr-1">
           
           {/* Smart Select: Budget Item with Instant FI Search */}
           <div className="relative" ref={dropdownRef}>
@@ -176,13 +218,12 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               סעיף תקציב וקוד FI <span className="text-rose-500">*</span>
             </label>
 
-            {/* Custom Trigger Box */}
             <div
               onClick={() => {
                 setIsDropdownOpen(!isDropdownOpen);
                 setTimeout(() => searchInputRef.current?.focus(), 50);
               }}
-              className="w-full bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl px-3.5 py-2.5 text-xs text-right cursor-pointer flex items-center justify-between transition-colors shadow-2xs"
+              className="w-full bg-slate-50 border border-slate-300 hover:border-blue-400 rounded-xl px-3.5 py-2 text-xs text-right cursor-pointer flex items-center justify-between transition-colors shadow-2xs"
             >
               {selectedItem ? (
                 <div className="flex items-center gap-2 truncate">
@@ -256,27 +297,113 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             )}
           </div>
 
-          {/* Date & Amount Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Row 1: Date opened | Date approved | Status */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                תאריך ההוצאה <span className="text-rose-500">*</span>
+                Date opened (תאריך פתיחה) <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
                 <input
                   type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  value={dateOpened}
+                  onChange={(e) => setDateOpened(e.target.value)}
                   required
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs font-medium"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs font-mono font-medium focus:bg-white focus:border-blue-500"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                סכום בש"ח (כולל מע"מ) <span className="text-rose-500">*</span>
+                Date approved (תאריך אישור)
+              </label>
+              <div className="relative">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <input
+                  type="date"
+                  value={dateApproved}
+                  onChange={(e) => setDateApproved(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs font-mono font-medium focus:bg-white focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Status (סטטוס)
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold focus:bg-white focus:border-blue-500 cursor-pointer"
+              >
+                <option value="Approved">Approved (אושר)</option>
+                <option value="Pending">Pending (ממתין לאישור)</option>
+                <option value="In Review">In Review (בבדיקה)</option>
+                <option value="Paid">Paid (שולם)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Row 2: Vendor | מספר ספק | חברה */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Vendor (שם ספק) <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <Building2 className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="למשל: סלופארק, פז, קייטרינג"
+                  value={vendor}
+                  onChange={(e) => setVendor(e.target.value)}
+                  required
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs font-bold focus:bg-white focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                מספר ספק
+              </label>
+              <div className="relative">
+                <Hash className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="למשל: 51482019"
+                  value={vendorNumber}
+                  onChange={(e) => setVendorNumber(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs font-mono focus:bg-white focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                חברה (Company)
+              </label>
+              <div className="relative">
+                <Briefcase className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="IDE Technologies"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs font-medium focus:bg-white focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: Cost | PO | PD */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Cost (עלות בש"ח) <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <span className="absolute right-3 top-2 text-xs font-bold text-slate-400">₪</span>
@@ -284,71 +411,109 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
                   type="number"
                   step="any"
                   placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
                   required
-                  autoFocus
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-8 pl-3 py-2 text-xs font-black text-slate-900 focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Vendor & Invoice Reference Number Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                שם הספק / בית העסק <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Building2 className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="למשל: סלופארק, פז, קייטרינג"
-                  value={vendor}
-                  onChange={(e) => setVendor(e.target.value)}
-                  required
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-8 pl-2.5 py-1.5 text-xs font-black text-slate-900 focus:bg-white focus:border-blue-500"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                מספר חשבונית / אסמכתא <span className="text-rose-500">*</span>
+                PO (מספר הזמנת רכש)
               </label>
               <div className="relative">
-                <FileText className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <Tag className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="למשל: INV-10492"
-                  value={refNumber}
-                  onChange={(e) => setRefNumber(e.target.value)}
-                  required
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2 text-xs font-mono text-slate-800 focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs"
+                  placeholder="למשל: PO-450012"
+                  value={poNumber}
+                  onChange={(e) => setPoNumber(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs font-mono font-bold text-blue-700 focus:bg-white focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                PD (מספר דרישת רכש / תשלום)
+              </label>
+              <div className="relative">
+                <FileText className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="למשל: PD-10023"
+                  value={pdNumber}
+                  onChange={(e) => setPdNumber(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs font-mono font-bold text-indigo-700 focus:bg-white focus:border-blue-500"
                 />
               </div>
             </div>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              הערות ופירוט נוסף
-            </label>
-            <div className="relative">
-              <MessageSquare className="w-4 h-4 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+          {/* Row 4: Details | User */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Details (פירוט / תיאור ההוצאה)
+              </label>
+              <input
+                type="text"
+                placeholder="פירוט רכישה, שירות, יעד, או אספקה..."
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:bg-white focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                User (משתמש / דורש)
+              </label>
+              <div className="relative">
+                <User className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="שם העובד / דורש"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-2.5 py-1.5 text-xs text-slate-800 focus:bg-white focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Row 5: הערות | עוד הערות... */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                הערות
+              </label>
               <textarea
                 rows={2}
-                placeholder="פירוט רכישה, מחלקה מקושרת, או יעד..."
+                placeholder="הערות שוטפות..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl pr-9 pl-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 focus:bg-white transition-all shadow-2xs resize-none"
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:bg-white focus:border-blue-500 resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                עוד הערות...
+              </label>
+              <textarea
+                rows={2}
+                placeholder="הערות ניהוליות או פירוט נוסף..."
+                value={extraNotes}
+                onChange={(e) => setExtraNotes(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:bg-white focus:border-blue-500 resize-none"
               />
             </div>
           </div>
 
-          {/* File Attachment (Invoice / Receipt PDF or Image) */}
+          {/* File Attachment */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">
               צירוף צילום חשבונית / מסמך PDF (אופציונלי)
@@ -372,9 +537,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               className="hidden"
             />
             {attachmentName ? (
-              <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
+              <div className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
                 <div className="flex items-center gap-2 text-emerald-800 font-bold truncate">
-                  <Paperclip className="w-4 h-4 shrink-0" />
+                  <Paperclip className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">{attachmentName}</span>
                 </div>
                 <button
@@ -393,9 +558,9 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-2.5 px-3 border border-dashed border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-blue-50/40 rounded-xl text-xs text-slate-600 font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                className="w-full py-2 px-3 border border-dashed border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-blue-50/40 rounded-xl text-xs text-slate-600 font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Upload className="w-4 h-4 text-blue-600" />
+                <Upload className="w-3.5 h-3.5 text-blue-600" />
                 <span>לחץ להעלאת צילום חשבונית או קובץ PDF</span>
               </button>
             )}
@@ -415,7 +580,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               className="px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/25 transition-all transform active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
-              <span>שמור הוצאה במערכת</span>
+              <span>שמור חשבונית במערכת</span>
             </button>
           </div>
 

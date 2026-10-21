@@ -359,12 +359,25 @@ export const ItemDrawer: React.FC<ItemDrawerProps> = ({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-900">{exp.vendor}</span>
+                          {exp.po_number && (
+                            <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-50 px-1 rounded">
+                              PO: {exp.po_number}
+                            </span>
+                          )}
+                          {exp.pd_number && (
+                            <span className="text-[10px] font-mono text-indigo-700 font-bold bg-indigo-50 px-1 rounded">
+                              PD: {exp.pd_number}
+                            </span>
+                          )}
                           <span className="text-[11px] font-mono text-slate-400">
                             #{exp.ref_number}
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
                           <span>{exp.date}</span>
+                          {exp.company && <span>• {exp.company}</span>}
+                          {exp.status && <span className="text-emerald-700 font-bold">• {exp.status}</span>}
+                          {exp.details && <span>• {exp.details}</span>}
                           {exp.notes && <span>• {exp.notes}</span>}
                         </div>
                       </div>

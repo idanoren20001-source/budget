@@ -13,11 +13,20 @@ export interface Expense {
   id: string;
   budget_item_id: string;
   fi_code: string;
-  date: string; // YYYY-MM-DD
-  amount: number;
-  vendor: string;
-  ref_number: string;
-  notes?: string;
+  date: string; // YYYY-MM-DD (Date opened)
+  amount: number; // Cost
+  vendor: string; // Vendor
+  vendor_number?: string; // מספר ספק
+  company?: string; // חברה
+  details?: string; // Details
+  po_number?: string; // PO
+  pd_number?: string; // PD
+  ref_number: string; // אסמכתא / חשבונית
+  notes?: string; // הערות
+  extra_notes?: string; // עוד הערות...
+  user_name?: string; // User
+  status?: string; // Status
+  date_approved?: string; // Date approved (YYYY-MM-DD)
   created_at: string;
   attachment_name?: string;
   attachment_type?: string;

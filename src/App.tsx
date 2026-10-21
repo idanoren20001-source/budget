@@ -283,6 +283,20 @@ export function App() {
     [expenses]
   );
 
+  // Clear all expenses (clean slate)
+  const handleClearAllExpenses = useCallback(() => {
+    if (
+      confirm(
+        'האם אתה בטוח שברצונך למחוק את כל ההוצאות והחשבוניות? פעולה זו תנקה את יומן ההוצאות לחלוטין לקראת קליטת קובץ חדש.'
+      )
+    ) {
+      setExpenses([]);
+      saveExpenses([], true);
+      logAuditEvent('expense_delete', 'איפוס יומן הוצאות', 'כל ההוצאות והחשבוניות נמחקו מהמערכת');
+      setAuditLogs(getStoredAuditLogs());
+    }
+  }, []);
+
   // Batch import expenses from Excel/CSV Importer
   const handleImportExpenses = useCallback(
     (newExpensesList: Omit<Expense, 'id' | 'created_at'>[]) => {
@@ -526,10 +540,12 @@ export function App() {
             onUpdateExpense={handleUpdateExpense}
             onBulkDeleteExpenses={handleBulkDeleteExpenses}
             onBulkUpdateExpenses={handleBulkUpdateExpenses}
+            onClearAllExpenses={handleClearAllExpenses}
             onOpenNewExpense={() => {
               setPreselectedItemId(null);
               setIsExpenseModalOpen(true);
             }}
+            onOpenExcelImport={() => setIsExcelImportOpen(true)}
             periodLabel={periodLabel}
           />
         )}
